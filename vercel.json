@@ -3,10 +3,5 @@
   "github": {
     "autoAlias": false,
     "silent": true
-  },
-  "git": {
-    "deploymentEnabled": {
-      "main": false
-    }
   }
 }
