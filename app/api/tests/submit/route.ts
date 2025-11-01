@@ -1,4 +1,8 @@
+// REAL WEB TESTING API - NO MOCK DATA
+// app/api/tests/submit/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
+import { RealWebTester } from '@/lib/real-web-testing';
 
 // Simple in-memory credit tracking (in production, this would be in Supabase)
 // For demo purposes, we'll track by session
@@ -6,6 +10,9 @@ let userCredits = {
   freeTests: 3,  // Everyone gets 3 FREE tests
   paidCredits: 0  // Paid credits (purchased separately)
 };
+
+// Store test progress for polling
+const testProgressStore = new Map<string, any>();
 
 export async function POST(req: NextRequest) {
   try {
@@ -90,7 +97,129 @@ export async function POST(req: NextRequest) {
       console.log(`💳 Paid credits used: ${creditsCharged}. Remaining: ${userCredits.paidCredits}`);
     }
 
-    // Simulate test execution
+    // Initialize progress tracking
+    testProgressStore.set(testId, {
+      stage: 'initializing',
+      progress: 0,
+      message: 'Starting test...'
+    });
+
+    // ============================================
+    // REAL TESTING STARTS HERE - NO MOCK DATA
+    // ============================================
+    
+    let testResults: any;
+    const startTime = Date.now();
+
+    try {
+      if (testType === 'web' && targetUrl) {
+        // Create real web tester with progress callback
+        const tester = new RealWebTester((progress) => {
+          testProgressStore.set(testId, progress);
+          console.log(`Test ${testId} progress:`, progress);
+        });
+
+        // Perform REAL web testing
+        console.log(`🚀 Starting REAL web test for: ${targetUrl}`);
+        testResults = await tester.testWebsite(targetUrl);
+        console.log(`✅ REAL test completed for ${testId}:`, testResults);
+
+      } else {
+        // For other test types, return not implemented yet
+        testResults = {
+          overall: 'warning' as const,
+          score: 0,
+          summary: {
+            total: 1,
+            passed: 0,
+            failed: 0,
+            warnings: 1
+          },
+          issues: [{
+            severity: 'medium' as const,
+            category: 'Implementation',
+            message: `${testType} testing not yet implemented`,
+            suggestion: 'Currently only web testing is fully implemented. Other test types coming soon!'
+          }],
+          recommendations: [
+            'Use web testing for now',
+            `${testType} testing will be available in the next update`
+          ],
+          performanceMetrics: {
+            loadTime: 0,
+            pageSize: 0,
+            requestCount: 0,
+            responseCode: 0
+          },
+          seoAnalysis: {
+            title: '',
+            titleLength: 0,
+            metaDescription: '',
+            metaDescriptionLength: 0,
+            h1Count: 0,
+            imageCount: 0,
+            imagesWithoutAlt: 0
+          },
+          linksAnalysis: {
+            totalLinks: 0,
+            internalLinks: 0,
+            externalLinks: 0,
+            brokenLinks: []
+          }
+        };
+      }
+    } catch (error: any) {
+      console.error(`❌ Real testing failed for ${testId}:`, error);
+      
+      // Return error results
+      testResults = {
+        overall: 'fail' as const,
+        score: 0,
+        summary: {
+          total: 1,
+          passed: 0,
+          failed: 1,
+          warnings: 0
+        },
+        issues: [{
+          severity: 'high' as const,
+          category: 'Testing Error',
+          message: `Test failed: ${error.message}`,
+          suggestion: 'Check if the URL is accessible and try again'
+        }],
+        recommendations: [
+          'Verify the URL is correct',
+          'Check if the website is accessible',
+          'Try testing a different URL'
+        ],
+        performanceMetrics: {
+          loadTime: 0,
+          pageSize: 0,
+          requestCount: 0,
+          responseCode: 0
+        },
+        seoAnalysis: {
+          title: '',
+          titleLength: 0,
+          metaDescription: '',
+          metaDescriptionLength: 0,
+          h1Count: 0,
+          imageCount: 0,
+          imagesWithoutAlt: 0
+        },
+        linksAnalysis: {
+          totalLinks: 0,
+          internalLinks: 0,
+          externalLinks: 0,
+          brokenLinks: []
+        }
+      };
+    }
+
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    // Build final response with REAL test results
     const testResult = {
       id: testId,
       testType,
@@ -101,47 +230,17 @@ export async function POST(req: NextRequest) {
       usedFreeTest,
       remainingFreeTests: userCredits.freeTests,
       remainingPaidCredits: userCredits.paidCredits,
-      startedAt: new Date().toISOString(),
-      completedAt: new Date(Date.now() + 5000).toISOString(),
+      startedAt: new Date(startTime).toISOString(),
+      completedAt: new Date(endTime).toISOString(),
+      duration: `${(duration / 1000).toFixed(2)}s`,
       results: {
-        overall: 'pass',
-        score: Math.floor(Math.random() * 20) + 80, // 80-100 score
-        summary: {
-          total: 50,
-          passed: Math.floor(Math.random() * 5) + 45, // 45-50 passed
-          failed: Math.floor(Math.random() * 3), // 0-3 failed
-          warnings: Math.floor(Math.random() * 5) // 0-5 warnings
-        },
-        issues: [
-          {
-            severity: 'medium',
-            category: 'Performance',
-            message: 'Page load time could be optimized',
-            suggestion: 'Consider implementing lazy loading for images and code splitting'
-          },
-          {
-            severity: 'low',
-            category: 'Accessibility',
-            message: 'Some images missing alt text',
-            suggestion: 'Add descriptive alt text to all images for better accessibility'
-          },
-          {
-            severity: 'low',
-            category: 'SEO',
-            message: 'Meta descriptions could be more descriptive',
-            suggestion: 'Write unique, compelling meta descriptions for each page'
-          }
-        ],
-        recommendations: [
-          'Enable browser caching for static assets',
-          'Optimize images for web delivery',
-          'Implement CDN for faster content delivery',
-          'Consider adding structured data for better SEO'
-        ],
+        ...testResults,
         javariAutoFix: {
-          available: true,
-          confidence: 92,
-          message: 'Javari AI can automatically fix 2 of 3 issues with 92% confidence'
+          available: testResults.issues?.length > 0,
+          confidence: testResults.issues?.length > 0 ? 90 : 0,
+          message: testResults.issues?.length > 0 
+            ? `Javari AI can automatically fix ${testResults.issues.length} issue(s) with 90% confidence`
+            : 'No issues found to fix'
         }
       },
       report: {
@@ -150,13 +249,18 @@ export async function POST(req: NextRequest) {
       }
     };
 
+    // Clear progress tracking
+    testProgressStore.delete(testId);
+
     // Log successful test submission
-    console.log(`✅ Test ${testId} submitted successfully:`, {
+    console.log(`✅ REAL test ${testId} completed successfully:`, {
       testType,
       target,
       economyMode,
       creditsCharged,
       usedFreeTest,
+      duration: `${(duration / 1000).toFixed(2)}s`,
+      score: testResults.score,
       remainingFreeTests: userCredits.freeTests,
       remainingPaidCredits: userCredits.paidCredits
     });
@@ -176,7 +280,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET endpoint to check remaining credits
+// GET endpoint to check test progress or credits
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -191,6 +295,31 @@ export async function GET(req: NextRequest) {
       }, { status: 200 });
     }
 
+    if (action === 'progress') {
+      // Return test progress
+      const testId = searchParams.get('id');
+      if (!testId) {
+        return NextResponse.json(
+          { error: 'Missing test ID' },
+          { status: 400 }
+        );
+      }
+
+      const progress = testProgressStore.get(testId);
+      if (!progress) {
+        return NextResponse.json(
+          { 
+            stage: 'complete',
+            progress: 100,
+            message: 'Test completed or not found'
+          },
+          { status: 200 }
+        );
+      }
+
+      return NextResponse.json(progress, { status: 200 });
+    }
+
     // Default: retrieve test by ID
     const testId = searchParams.get('id');
     if (!testId) {
@@ -201,23 +330,10 @@ export async function GET(req: NextRequest) {
     }
 
     // In production, this would fetch from Supabase
-    const testResult = {
-      id: testId,
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-      results: {
-        overall: 'pass',
-        score: 87,
-        summary: {
-          total: 50,
-          passed: 47,
-          failed: 1,
-          warnings: 2
-        }
-      }
-    };
-
-    return NextResponse.json(testResult, { status: 200 });
+    return NextResponse.json(
+      { error: 'Test retrieval not yet implemented' },
+      { status: 501 }
+    );
 
   } catch (error: any) {
     console.error('API error:', error);
