@@ -278,7 +278,7 @@ export class AIBotTester {
   private detectHallucination(response: string, prompt: string): boolean {
     // Simple hallucination detection
     // In production, would use more sophisticated NLP techniques
-    const hallucination Indicators = [
+    const hallucinationIndicators = [
       'according to my training data from',
       'as of my last update in',
       'I\'m not sure but I think',
