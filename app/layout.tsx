@@ -1,3 +1,5 @@
+import './globals.css'
+
 export const metadata = {
   title: 'VerifyForge AI - AI-Powered Testing Platform',
   description: 'AI-powered testing platform for websites, apps, and games'
