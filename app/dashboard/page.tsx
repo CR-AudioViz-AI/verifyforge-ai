@@ -1,9 +1,48 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import SimpleDashboard from '@/components/SimpleDashboard';
 import Link from 'next/link';
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    // Check authentication
+    const isAuth = localStorage.getItem('verifyforge_auth');
+    const userData = localStorage.getItem('verifyforge_user');
+
+    if (!isAuth || !userData) {
+      // Not authenticated, redirect to auth page
+      router.push('/auth');
+      return;
+    }
+
+    // Load user data
+    setUser(JSON.parse(userData));
+    setLoading(false);
+  }, [router]);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('verifyforge_auth');
+    localStorage.removeItem('verifyforge_user');
+    router.push('/');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -18,11 +57,19 @@ export default function DashboardPage() {
               </div>
             </Link>
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-600">
-                <span className="font-semibold">Credits:</span> 3 free tests
+              {user && (
+                <div className="text-sm text-gray-600">
+                  <span className="font-semibold">Welcome, {user.name || user.email}</span>
+                </div>
+              )}
+              <div className="text-sm text-gray-600 bg-green-50 px-3 py-1 rounded-lg border border-green-200">
+                <span className="font-semibold">Free Tests:</span> {user?.freeTests || 3}
               </div>
-              <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
-                Upgrade
+              <button 
+                onClick={handleSignOut}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Sign Out
               </button>
             </div>
           </div>
