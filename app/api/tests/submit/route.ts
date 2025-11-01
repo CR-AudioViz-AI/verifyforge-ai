@@ -1,22 +1,25 @@
-// REAL WEB TESTING API - NO MOCK DATA
+// COMPLETE REAL TESTING API - ALL TEST TYPES
 // app/api/tests/submit/route.ts
+// Routes to appropriate testing engine based on test type
 
 import { NextRequest, NextResponse } from 'next/server';
 import { RealWebTester } from '@/lib/real-web-testing';
+import DocumentTester from '@/lib/document-testing';
+import APITester from '@/lib/api-testing';
+import AIBotTester from '@/lib/ai-bot-testing';
+import { GameTester, MobileTester, AvatarTester, ToolTester } from '@/lib/comprehensive-testing';
 
-// Simple in-memory credit tracking (in production, this would be in Supabase)
-// For demo purposes, we'll track by session
+// Simple in-memory credit tracking
 let userCredits = {
-  freeTests: 3,  // Everyone gets 3 FREE tests
-  paidCredits: 0  // Paid credits (purchased separately)
+  freeTests: 3,
+  paidCredits: 0
 };
 
-// Store test progress for polling
+// Store test progress
 const testProgressStore = new Map<string, any>();
 
 export async function POST(req: NextRequest) {
   try {
-    // Parse form data
     const formData = await req.formData();
     const testType = formData.get('test_type') as string;
     const targetUrl = formData.get('target_url') as string;
@@ -38,7 +41,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if user has free tests remaining
+    // Check credits
     if (userCredits.freeTests <= 0 && userCredits.paidCredits <= 0) {
       return NextResponse.json(
         { 
@@ -47,179 +50,151 @@ export async function POST(req: NextRequest) {
           freeTests: 0,
           paidCredits: 0
         },
-        { status: 402 } // Payment Required
+        { status: 402 }
       );
     }
 
     // Generate test ID
     const testId = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // Determine target
     const target = targetUrl || (file ? file.name : 'uploaded-file');
 
-    // CREDIT SYSTEM:
-    // - First 3 tests are FREE (no credits charged)
-    // - After that, paid credits are used based on test type and economy mode
+    // Handle credits
     let creditsCharged = 0;
     let usedFreeTest = false;
 
     if (userCredits.freeTests > 0) {
-      // Use a FREE test
       userCredits.freeTests--;
       creditsCharged = 0;
       usedFreeTest = true;
-      console.log(`✅ FREE test used! Remaining free tests: ${userCredits.freeTests}`);
+      console.log(`✅ FREE test used! Remaining: ${userCredits.freeTests}`);
     } else {
-      // Calculate paid credits
       const creditCosts: Record<string, number> = {
-        web: 10,
-        document: 8,
-        game: 15,
-        ai: 12,
-        avatar: 10,
-        tool: 8,
-        api: 5,
-        mobile: 12
+        web: 10, document: 8, game: 15, ai: 12,
+        avatar: 10, tool: 8, api: 5, mobile: 12
       };
-
       const discounts: Record<string, number> = {
-        standard: 0,
-        economy: 40,
-        ultra_economy: 60
+        standard: 0, economy: 40, ultra_economy: 60
       };
-
       const baseCredits = creditCosts[testType] || 10;
       const discount = discounts[economyMode] || 0;
       creditsCharged = Math.ceil(baseCredits * (1 - discount / 100));
-
-      // Deduct from paid credits
       userCredits.paidCredits -= creditsCharged;
       console.log(`💳 Paid credits used: ${creditsCharged}. Remaining: ${userCredits.paidCredits}`);
     }
 
-    // Initialize progress tracking
+    // Initialize progress
     testProgressStore.set(testId, {
       stage: 'initializing',
       progress: 0,
       message: 'Starting test...'
     });
 
-    // ============================================
-    // REAL TESTING STARTS HERE - NO MOCK DATA
-    // ============================================
+    // ==================================================
+    // ROUTE TO REAL TESTING ENGINE
+    // ==================================================
     
     let testResults: any;
     const startTime = Date.now();
 
     try {
-      if (testType === 'web' && targetUrl) {
-        // Create real web tester with progress callback
-        const tester = new RealWebTester((progress) => {
-          testProgressStore.set(testId, progress);
-          console.log(`Test ${testId} progress:`, progress);
-        });
+      console.log(`🚀 Starting REAL ${testType} test for: ${target}`);
 
-        // Perform REAL web testing
-        console.log(`🚀 Starting REAL web test for: ${targetUrl}`);
-        testResults = await tester.testWebsite(targetUrl);
-        console.log(`✅ REAL test completed for ${testId}:`, testResults);
+      switch (testType) {
+        case 'web':
+          if (!targetUrl) throw new Error('URL required for web testing');
+          const webTester = new RealWebTester((progress) => {
+            testProgressStore.set(testId, progress);
+          });
+          testResults = await webTester.testWebsite(targetUrl);
+          break;
 
-      } else {
-        // For other test types, return not implemented yet
-        testResults = {
-          overall: 'warning' as const,
-          score: 0,
-          summary: {
-            total: 1,
-            passed: 0,
-            failed: 0,
-            warnings: 1
-          },
-          issues: [{
-            severity: 'medium' as const,
-            category: 'Implementation',
-            message: `${testType} testing not yet implemented`,
-            suggestion: 'Currently only web testing is fully implemented. Other test types coming soon!'
-          }],
-          recommendations: [
-            'Use web testing for now',
-            `${testType} testing will be available in the next update`
-          ],
-          performanceMetrics: {
-            loadTime: 0,
-            pageSize: 0,
-            requestCount: 0,
-            responseCode: 0
-          },
-          seoAnalysis: {
-            title: '',
-            titleLength: 0,
-            metaDescription: '',
-            metaDescriptionLength: 0,
-            h1Count: 0,
-            imageCount: 0,
-            imagesWithoutAlt: 0
-          },
-          linksAnalysis: {
-            totalLinks: 0,
-            internalLinks: 0,
-            externalLinks: 0,
-            brokenLinks: []
-          }
-        };
+        case 'document':
+          if (!file) throw new Error('File required for document testing');
+          const docTester = new DocumentTester((progress) => {
+            testProgressStore.set(testId, progress);
+          });
+          testResults = await docTester.testDocument(file);
+          break;
+
+        case 'api':
+          if (!targetUrl) throw new Error('URL required for API testing');
+          const apiTester = new APITester((progress) => {
+            testProgressStore.set(testId, progress);
+          });
+          testResults = await apiTester.testAPI(targetUrl);
+          break;
+
+        case 'ai':
+          if (!targetUrl) throw new Error('URL required for AI/Bot testing');
+          const aiTester = new AIBotTester((progress) => {
+            testProgressStore.set(testId, progress);
+          });
+          testResults = await aiTester.testAIBot(targetUrl);
+          break;
+
+        case 'game':
+          if (!file) throw new Error('File required for game testing');
+          const gameTester = new GameTester((progress) => {
+            testProgressStore.set(testId, progress);
+          });
+          testResults = await gameTester.testGame(file);
+          break;
+
+        case 'mobile':
+          if (!file) throw new Error('File required for mobile testing');
+          const mobileTester = new MobileTester((progress) => {
+            testProgressStore.set(testId, progress);
+          });
+          testResults = await mobileTester.testMobileApp(file);
+          break;
+
+        case 'avatar':
+          if (!file) throw new Error('File required for avatar testing');
+          const avatarTester = new AvatarTester((progress) => {
+            testProgressStore.set(testId, progress);
+          });
+          testResults = await avatarTester.testAvatar(file);
+          break;
+
+        case 'tool':
+          if (!targetUrl) throw new Error('URL required for tool testing');
+          const toolTester = new ToolTester((progress) => {
+            testProgressStore.set(testId, progress);
+          });
+          testResults = await toolTester.testTool(targetUrl);
+          break;
+
+        default:
+          throw new Error(`Unsupported test type: ${testType}`);
       }
+
+      console.log(`✅ REAL ${testType} test completed for ${testId}`);
+
     } catch (error: any) {
       console.error(`❌ Real testing failed for ${testId}:`, error);
       
-      // Return error results
       testResults = {
         overall: 'fail' as const,
         score: 0,
-        summary: {
-          total: 1,
-          passed: 0,
-          failed: 1,
-          warnings: 0
-        },
+        summary: { total: 1, passed: 0, failed: 1, warnings: 0 },
         issues: [{
           severity: 'high' as const,
           category: 'Testing Error',
           message: `Test failed: ${error.message}`,
-          suggestion: 'Check if the URL is accessible and try again'
+          suggestion: 'Check your input and try again'
         }],
         recommendations: [
-          'Verify the URL is correct',
-          'Check if the website is accessible',
-          'Try testing a different URL'
-        ],
-        performanceMetrics: {
-          loadTime: 0,
-          pageSize: 0,
-          requestCount: 0,
-          responseCode: 0
-        },
-        seoAnalysis: {
-          title: '',
-          titleLength: 0,
-          metaDescription: '',
-          metaDescriptionLength: 0,
-          h1Count: 0,
-          imageCount: 0,
-          imagesWithoutAlt: 0
-        },
-        linksAnalysis: {
-          totalLinks: 0,
-          internalLinks: 0,
-          externalLinks: 0,
-          brokenLinks: []
-        }
+          'Verify the input is correct',
+          'Check if the resource is accessible',
+          'Try a different test configuration'
+        ]
       };
     }
 
     const endTime = Date.now();
     const duration = endTime - startTime;
 
-    // Build final response with REAL test results
+    // Build final response
     const testResult = {
       id: testId,
       testType,
@@ -249,21 +224,9 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    // Clear progress tracking
     testProgressStore.delete(testId);
 
-    // Log successful test submission
-    console.log(`✅ REAL test ${testId} completed successfully:`, {
-      testType,
-      target,
-      economyMode,
-      creditsCharged,
-      usedFreeTest,
-      duration: `${(duration / 1000).toFixed(2)}s`,
-      score: testResults.score,
-      remainingFreeTests: userCredits.freeTests,
-      remainingPaidCredits: userCredits.paidCredits
-    });
+    console.log(`✅ Test ${testId} completed: ${testType}, score: ${testResults.score}, duration: ${(duration / 1000).toFixed(2)}s`);
 
     return NextResponse.json(testResult, { status: 200 });
 
@@ -280,14 +243,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET endpoint to check test progress or credits
+// GET endpoint for progress and credits
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
 
     if (action === 'credits') {
-      // Return current credit balance
       return NextResponse.json({
         freeTests: userCredits.freeTests,
         paidCredits: userCredits.paidCredits,
@@ -296,44 +258,24 @@ export async function GET(req: NextRequest) {
     }
 
     if (action === 'progress') {
-      // Return test progress
       const testId = searchParams.get('id');
       if (!testId) {
-        return NextResponse.json(
-          { error: 'Missing test ID' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Missing test ID' }, { status: 400 });
       }
 
       const progress = testProgressStore.get(testId);
       if (!progress) {
-        return NextResponse.json(
-          { 
-            stage: 'complete',
-            progress: 100,
-            message: 'Test completed or not found'
-          },
-          { status: 200 }
-        );
+        return NextResponse.json({ 
+          stage: 'complete',
+          progress: 100,
+          message: 'Test completed or not found'
+        }, { status: 200 });
       }
 
       return NextResponse.json(progress, { status: 200 });
     }
 
-    // Default: retrieve test by ID
-    const testId = searchParams.get('id');
-    if (!testId) {
-      return NextResponse.json(
-        { error: 'Missing test ID' },
-        { status: 400 }
-      );
-    }
-
-    // In production, this would fetch from Supabase
-    return NextResponse.json(
-      { error: 'Test retrieval not yet implemented' },
-      { status: 501 }
-    );
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 
   } catch (error: any) {
     console.error('API error:', error);
