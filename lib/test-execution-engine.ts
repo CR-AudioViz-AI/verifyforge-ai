@@ -142,7 +142,7 @@ async function executeWebTests(submissionId: string, url: string, config: any) {
   const { CompleteWebTester } = await import('./complete-web-testing');
   
   const tester = new CompleteWebTester();
-  const result = await tester.testWebsite(url, config.economy_mode || 'standard');
+  const result = await tester.testWebsite(url);
   
   return {
     passed: result.overall === 'pass',
@@ -206,11 +206,7 @@ async function executeGameTests(submissionId: string, url: string, config: any) 
 async function executeAITests(submissionId: string, url: string, config: any) {
   const tester = new CompleteAiBotTester();
   
-  const result = await tester.testAiBot(url, {
-    testConversations: config?.test_conversations || 10,
-    checkHallucinations: config?.check_hallucinations !== false,
-    testKnowledgeBase: config?.test_knowledge_base !== false
-  });
+  const result = await tester.testAiBot(url);
   
   return {
     passed: result.overall === 'pass',
@@ -250,7 +246,7 @@ async function executeAvatarTests(submissionId: string, url: string, config: any
 async function executeToolTests(submissionId: string, url: string, config: any) {
   const tester = new CompleteToolTester();
   
-  const result = await tester.testTool(url, config?.test_cases || []);
+  const result = await tester.testTool(url);
   
   return {
     passed: result.overall === 'pass',
@@ -267,7 +263,7 @@ async function executeToolTests(submissionId: string, url: string, config: any) 
 async function executeAPITests(submissionId: string, url: string, config: any) {
   const tester = new CompleteApiTester();
   
-  const result = await tester.testApi(url, config?.endpoints || []);
+  const result = await tester.testApi(url);
   
   return {
     passed: result.overall === 'pass',
@@ -420,3 +416,4 @@ async function deductCredits(userId: string, amount: number, submissionId: strin
 export default {
   executeTests
 };
+
