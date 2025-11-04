@@ -21,7 +21,7 @@ export interface MobileTestResult {
 }
 
 export class CompleteMobileTester {
-  async testMobile(url: string): Promise<MobileTestResult> {
+  async testMobileApp(url: string): Promise<MobileTestResult> {
     const issues: MobileTestResult['issues'] = [];
     const recommendations: string[] = [];
     let testsPassed = 0;
