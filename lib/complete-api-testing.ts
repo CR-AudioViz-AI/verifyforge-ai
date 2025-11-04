@@ -105,7 +105,7 @@ interface APIDesignAnalysis {
 interface ResponseAnalysis {
   statusCode: number;
   statusText: string;
-  headers: Record<string, string>;
+  headers: any;
   contentType: string;
   contentLength: number;
   compression: boolean;
