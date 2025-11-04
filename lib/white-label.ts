@@ -49,6 +49,17 @@ interface WhiteLabelConfig {
   };
 }
 
+// Database types for Supabase
+interface WhiteLabelConfigRow {
+  organization_id: string;
+  branding: WhiteLabelConfig['branding'];
+  domains: WhiteLabelConfig['domains'];
+  features: WhiteLabelConfig['features'];
+  reseller?: WhiteLabelConfig['reseller'];
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface BrandedReport {
   testId: string;
   config: WhiteLabelConfig;
@@ -108,12 +119,15 @@ export class WhiteLabelManager {
       return null;
     }
 
+    // Type assertion for database row
+    const row = data as WhiteLabelConfigRow;
+
     return {
-      organizationId: data.organization_id,
-      branding: data.branding,
-      domains: data.domains,
-      features: data.features,
-      reseller: data.reseller,
+      organizationId: row.organization_id,
+      branding: row.branding,
+      domains: row.domains,
+      features: row.features,
+      reseller: row.reseller,
     };
   }
 
