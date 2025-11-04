@@ -701,7 +701,7 @@ export class ToolTester {
       }
     });
 
-    return [...new Set(features)].slice(0, 15);
+    return Array.from(new Set(features)).slice(0, 15);
   }
 }
 
