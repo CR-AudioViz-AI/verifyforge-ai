@@ -1507,7 +1507,7 @@ export class CompleteWebTester {
   private analyzeWCAG($: cheerio.CheerioAPI): WCAGComplianceAnalysis {
     // Text alternatives
     const images = $('img');
-    const imagesWithAlt = images.filter((_, el) => $(el).attr('alt')).length;
+    const imagesWithAlt = images.filter((_, el) => !!$(el).attr('alt')).length;
     const imagesWithoutAlt = images.length - imagesWithAlt;
     const altTextQuality: 'good' | 'warning' | 'poor' =
       imagesWithoutAlt === 0 && images.length > 0 ? 'good' :
@@ -1696,8 +1696,8 @@ export class CompleteWebTester {
 
     // Image analysis
     const images = $('img');
-    const webpImages = images.filter((_, el) => $(el).attr('src')?.includes('.webp')).length;
-    const avifImages = images.filter((_, el) => $(el).attr('src')?.includes('.avif')).length;
+    const webpImages = images.filter((_, el) => !!$(el).attr('src')?.includes('.webp')).length;
+    const avifImages = images.filter((_, el) => !!$(el).attr('src')?.includes('.avif')).length;
     const lazyImages = images.filter((_, el) => $(el).attr('loading') === 'lazy').length;
 
     return {
