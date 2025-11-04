@@ -52,7 +52,7 @@ interface APITestResult {
   };
 }
 
-export class CompleteAPITester {
+export class CompleteApiTester {
   async testAPI(apiUrl: string, endpoints: string[], method: string = 'GET'): Promise<APITestResult> {
     const issues: APITestResult['issues'] = [];
     const recommendations: string[] = [];
