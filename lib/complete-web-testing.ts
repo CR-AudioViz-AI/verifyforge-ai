@@ -1402,7 +1402,7 @@ export class CompleteWebTester {
 
     // Subresource Integrity
     const externalScripts = $('script[src^="http"]');
-    const scriptsWithSRI = externalScripts.filter((_, el) => $(el).attr('integrity')).length;
+    const scriptsWithSRI = externalScripts.filter((_, el) => !!$(el).attr('integrity')).length;
     const subresourceIntegrity = externalScripts.length > 0 && scriptsWithSRI > 0;
     const sriCoverage = externalScripts.length > 0 ?
       Math.round((scriptsWithSRI / externalScripts.length) * 100) : 0;
