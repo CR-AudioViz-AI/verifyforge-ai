@@ -69,7 +69,7 @@ interface ComprehensiveToolTestResult {
     mobileSupport: boolean;
     offlineCapability: boolean;
   };
-  outputQuality Analysis: {
+  outputQualityAnalysis: {
     formats: string[];
     quality: string;
     customization: boolean;
