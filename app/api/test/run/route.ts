@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { CompleteWebTester } from '@/lib/complete-web-testing'
-import { CompleteDocumentTester } from '@/lib/complete-document-testing'
-import { CompleteApiTester } from '@/lib/complete-api-testing'
-import { CompleteAiBotTester } from '@/lib/complete-ai-bot-testing'
-import { CompleteGameTester } from '@/lib/complete-game-testing'
-import { CompleteMobileTester } from '@/lib/complete-mobile-testing'
-import { CompleteAvatarTester } from '@/lib/complete-avatar-testing'
-import { CompleteToolTester } from '@/lib/complete-tool-testing'
+import {
+  CompleteWebTester,
+  CompleteDocumentTester,
+  CompleteApiTester,
+  CompleteAiBotTester,
+  CompleteGameTester,
+  CompleteMobileTester,
+  CompleteAvatarTester,
+  CompleteToolTester
+} from '@/lib'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300 // 5 minutes
