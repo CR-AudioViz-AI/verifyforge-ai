@@ -26,6 +26,8 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { URL } from 'url';
 
+type CheerioAPI = ReturnType<typeof cheerio.load>;
+
 // ============================================================================
 // INTERFACES - Complete Result Structures
 // ============================================================================
@@ -1002,7 +1004,7 @@ export class UltimateWebTester {
     url: string,
     response: any,
     timings: any,
-    $: cheerio.Root,
+    $: CheerioAPI,
     html: string,
     pageSize: number,
     headers: any,
@@ -1162,7 +1164,7 @@ export class UltimateWebTester {
   private async analyzeCoreWebVitals(
     url: string,
     timings: any,
-    $: cheerio.Root,
+    $: CheerioAPI,
     html: string,
     performanceMetrics: PerformanceMetrics,
     issues: TestIssue[],
@@ -1380,7 +1382,7 @@ export class UltimateWebTester {
   // ====================================================================
   private async analyzeSEO(
     url: string,
-    $: cheerio.Root,
+    $: CheerioAPI,
     html: string,
     testUrl: URL,
     issues: TestIssue[],
@@ -1850,7 +1852,7 @@ export class UltimateWebTester {
     testUrl: URL,
     response: any,
     headers: any,
-    $: cheerio.Root,
+    $: CheerioAPI,
     html: string,
     issues: TestIssue[],
     recommendations: string[]
@@ -2214,7 +2216,7 @@ export class UltimateWebTester {
   // ACCESSIBILITY ANALYSIS METHOD (WCAG 2.2)
   // ====================================================================
   private async analyzeAccessibility(
-    $: cheerio.Root,
+    $: CheerioAPI,
     html: string,
     issues: TestIssue[],
     recommendations: string[]
@@ -2502,7 +2504,7 @@ export class UltimateWebTester {
 
   private async analyzeLinks(
     url: string,
-    $: cheerio.Root,
+    $: CheerioAPI,
     testUrl: URL,
     issues: TestIssue[],
     recommendations: string[]
@@ -2606,7 +2608,7 @@ export class UltimateWebTester {
   }
 
   private async analyzeResources(
-    $: cheerio.Root,
+    $: CheerioAPI,
     html: string,
     testUrl: URL,
     issues: TestIssue[],
@@ -2679,7 +2681,7 @@ export class UltimateWebTester {
   }
 
   private async analyzeMobile(
-    $: cheerio.Root,
+    $: CheerioAPI,
     html: string,
     issues: TestIssue[],
     recommendations: string[]
@@ -2758,7 +2760,7 @@ export class UltimateWebTester {
   private async analyzePWA(
     url: string,
     testUrl: URL,
-    $: cheerio.Root,
+    $: CheerioAPI,
     issues: TestIssue[],
     recommendations: string[]
   ): Promise<PWAAnalysis> {
@@ -2825,7 +2827,7 @@ export class UltimateWebTester {
 
   private async analyzeCodeQuality(
     html: string,
-    $: cheerio.Root,
+    $: CheerioAPI,
     issues: TestIssue[],
     recommendations: string[]
   ): Promise<CodeQualityAnalysis> {
@@ -2893,7 +2895,7 @@ export class UltimateWebTester {
   }
 
   private async analyzeBusiness(
-    $: cheerio.Root,
+    $: CheerioAPI,
     html: string,
     testUrl: URL,
     issues: TestIssue[],
@@ -2980,7 +2982,7 @@ export class UltimateWebTester {
   }
 
   private async analyzeContent(
-    $: cheerio.Root,
+    $: CheerioAPI,
     html: string,
     issues: TestIssue[],
     recommendations: string[]
