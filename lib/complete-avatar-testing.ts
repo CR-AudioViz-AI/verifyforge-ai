@@ -21,7 +21,7 @@ export interface AvatarTestResult {
   };
 }
 
-export class AvatarTester {
+export class CompleteAvatarTester {
   async testAvatar(file: File): Promise<AvatarTestResult> {
     const issues: AvatarTestResult['issues'] = [];
     const recommendations: string[] = [];
