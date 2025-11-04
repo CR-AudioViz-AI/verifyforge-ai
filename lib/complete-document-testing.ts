@@ -244,8 +244,8 @@ export class CompleteDocumentTester {
             try {
               const resources = page.node.Resources();
               const xobjects = resources?.lookup(resources.context.obj('XObject'));
-              if (xobjects) {
-                imageCount += Object.keys(xobjects.dict).length;
+              if (xobjects && typeof xobjects === 'object' && 'dict' in xobjects) {
+                imageCount += Object.keys((xobjects as any).dict).length;
               }
             } catch (e) {
               // Continue if can't extract
