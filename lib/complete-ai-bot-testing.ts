@@ -20,7 +20,7 @@ export interface AITestResult {
   };
 }
 
-export class AITester {
+export class CompleteAiBotTester {
   async testAI(prompt: string, response: string): Promise<AITestResult> {
     const issues: AITestResult['issues'] = [];
     const recommendations: string[] = [];
