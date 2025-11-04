@@ -442,7 +442,7 @@ export class CompleteWebTester {
       const scripts = $('script[src]').length + $('script:not([src])').length;
       const stylesheets = $('link[rel="stylesheet"]').length;
       const images = $('img').length;
-      const fonts = $('link[rel*="font"]').length + $('style').text().match(/@font-face/g)?.length || 0;
+      const fonts = $('link[rel*="font"]').length + ($('style').text().match(/@font-face/g)?.length ?? 0);
       const inlineScripts = $('script:not([src])').length;
       const inlineStyles = $('style').length;
 
