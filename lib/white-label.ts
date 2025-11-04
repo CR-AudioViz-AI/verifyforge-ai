@@ -132,16 +132,18 @@ export class WhiteLabelManager {
   }
 
   async createWhiteLabelConfig(config: WhiteLabelConfig): Promise<void> {
+    const row: any = {
+      organization_id: config.organizationId,
+      branding: config.branding,
+      domains: config.domains,
+      features: config.features,
+      reseller: config.reseller,
+      created_at: new Date().toISOString(),
+    };
+
     const { error } = await this.supabase
       .from('white_label_configs')
-      .insert({
-        organization_id: config.organizationId,
-        branding: config.branding,
-        domains: config.domains,
-        features: config.features,
-        reseller: config.reseller,
-        created_at: new Date().toISOString(),
-      });
+      .insert(row);
 
     if (error) {
       throw new Error(`Failed to create white label config: ${error.message}`);
@@ -152,12 +154,14 @@ export class WhiteLabelManager {
     organizationId: string,
     updates: Partial<WhiteLabelConfig>
   ): Promise<void> {
+    const updateData: any = {
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+
     const { error } = await this.supabase
       .from('white_label_configs')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('organization_id', organizationId);
 
     if (error) {
