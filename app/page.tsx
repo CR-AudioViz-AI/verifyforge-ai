@@ -1,247 +1,327 @@
-'use client';
+'use client'
 
-import { CheckCircle2, Zap, Shield, TrendingUp, Smartphone, FileCode, Gamepad2, Globe, Bot, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { useState } from 'react'
+import { 
+  Globe, 
+  FileText, 
+  Gamepad2, 
+  Bot, 
+  Smartphone, 
+  User, 
+  Wrench, 
+  Code,
+  Play,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  TrendingUp,
+  Shield,
+  Zap
+} from 'lucide-react'
 
-export default function Home() {
-  const testTypes = [
-    {
-      icon: <Globe className="w-8 h-8" />,
-      title: "Website Testing",
-      description: "Complete website validation including links, forms, responsiveness, and SEO",
-      color: "from-blue-500 to-cyan-500"
-    },
-    {
-      icon: <Smartphone className="w-8 h-8" />,
-      title: "Mobile App Testing",
-      description: "iOS & Android testing with real device emulation and gesture support",
-      color: "from-purple-500 to-pink-500"
-    },
-    {
-      icon: <Gamepad2 className="w-8 h-8" />,
-      title: "Game Testing",
-      description: "Performance, gameplay mechanics, and multiplayer functionality testing",
-      color: "from-orange-500 to-red-500"
-    },
-    {
-      icon: <FileCode className="w-8 h-8" />,
-      title: "API Testing",
-      description: "Endpoint validation, response time, and security vulnerability scanning",
-      color: "from-green-500 to-emerald-500"
-    },
-    {
-      icon: <Shield className="w-8 h-8" />,
-      title: "Security Testing",
-      description: "OWASP Top 10 vulnerabilities, penetration testing, and compliance checks",
-      color: "from-red-500 to-rose-500"
-    },
-    {
-      icon: <Bot className="w-8 h-8" />,
-      title: "AI-Powered Analysis",
-      description: "Intelligent bug detection and automatic fix suggestions with Javari AI",
-      color: "from-violet-500 to-purple-500"
-    },
-    {
-      icon: <TrendingUp className="w-8 h-8" />,
-      title: "Performance Testing",
-      description: "Load testing, stress testing, and optimization recommendations",
-      color: "from-yellow-500 to-orange-500"
-    },
-    {
-      icon: <CheckCircle2 className="w-8 h-8" />,
-      title: "Accessibility Testing",
-      description: "WCAG 2.2 AA compliance and screen reader compatibility",
-      color: "from-teal-500 to-cyan-500"
-    }
-  ];
+interface TestType {
+  id: string
+  name: string
+  description: string
+  icon: any
+  color: string
+  checks: number
+  avgTime: string
+  supported: string[]
+}
 
-  const features = [
-    {
-      icon: <Zap className="w-6 h-6" />,
-      title: "Lightning Fast",
-      description: "Get results in minutes, not hours"
-    },
-    {
-      icon: <Bot className="w-6 h-6" />,
-      title: "AI-Powered Fixes",
-      description: "90%+ confidence automatic bug fixing"
-    },
-    {
-      icon: <Shield className="w-6 h-6" />,
-      title: "Enterprise Security",
-      description: "SOC 2 compliant infrastructure"
-    }
-  ];
+const testTypes: TestType[] = [
+  {
+    id: 'web',
+    name: 'Website Testing',
+    description: 'Comprehensive analysis of websites, SEO, performance, security, and accessibility',
+    icon: Globe,
+    color: 'from-blue-500 to-cyan-500',
+    checks: 40,
+    avgTime: '30-60s',
+    supported: ['URL']
+  },
+  {
+    id: 'document',
+    name: 'Document Testing',
+    description: 'Deep analysis of PDF, DOCX, XLSX, PPTX files for quality, security, and optimization',
+    icon: FileText,
+    color: 'from-purple-500 to-pink-500',
+    checks: 40,
+    avgTime: '20-45s',
+    supported: ['PDF', 'DOCX', 'XLSX', 'PPTX']
+  },
+  {
+    id: 'api',
+    name: 'API Testing',
+    description: 'REST API endpoint testing for security, performance, authentication, and compliance',
+    icon: Code,
+    color: 'from-green-500 to-emerald-500',
+    checks: 42,
+    avgTime: '15-30s',
+    supported: ['REST', 'GraphQL']
+  },
+  {
+    id: 'ai',
+    name: 'AI/Bot Testing',
+    description: 'Advanced testing for AI systems including hallucination detection and security',
+    icon: Bot,
+    color: 'from-orange-500 to-red-500',
+    checks: 50,
+    avgTime: '2-5min',
+    supported: ['ChatGPT', 'Claude', 'Custom']
+  },
+  {
+    id: 'game',
+    name: 'Game Testing',
+    description: 'Comprehensive game analysis covering performance, assets, and user experience',
+    icon: Gamepad2,
+    color: 'from-indigo-500 to-purple-500',
+    checks: 45,
+    avgTime: '30-90s',
+    supported: ['HTML5', 'APK', 'Unity']
+  },
+  {
+    id: 'mobile',
+    name: 'Mobile App Testing',
+    description: 'iOS and Android app testing for performance, security, and app store compliance',
+    icon: Smartphone,
+    color: 'from-pink-500 to-rose-500',
+    checks: 40,
+    avgTime: '45-90s',
+    supported: ['APK', 'IPA', 'AAB']
+  },
+  {
+    id: 'avatar',
+    name: 'Avatar Testing',
+    description: '3D model and avatar testing for VR/AR, games, and metaverse applications',
+    icon: User,
+    color: 'from-teal-500 to-cyan-500',
+    checks: 35,
+    avgTime: '20-45s',
+    supported: ['FBX', 'glTF', 'OBJ', 'USD']
+  },
+  {
+    id: 'tool',
+    name: 'Tool Testing',
+    description: 'Comprehensive analysis of web tools, SaaS platforms, and software applications',
+    icon: Wrench,
+    color: 'from-yellow-500 to-orange-500',
+    checks: 35,
+    avgTime: '30-60s',
+    supported: ['URL', 'SaaS']
+  }
+]
+
+export default function VerifyForgeDashboard() {
+  const [selectedTest, setSelectedTest] = useState<string | null>(null)
+  const [isTestRunning, setIsTestRunning] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="border-b border-slate-800 bg-slate-950/50 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="text-3xl">⚡</div>
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <Shield className="w-7 h-7 text-white" />
+              </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">VerifyForge AI</h1>
-                <p className="text-sm text-purple-300">AI-Powered Testing Platform</p>
+                <p className="text-sm text-slate-400">Professional Testing Platform</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <Link 
-                href="/dashboard" 
-                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-purple-500/50"
-              >
-                Start Testing
-              </Link>
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 rounded-lg border border-slate-700">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-slate-300">3 Free Tests</span>
+              </div>
+              <button className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:opacity-90 transition-opacity">
+                Upgrade
+              </button>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Hero Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-full text-purple-300 text-sm font-semibold mb-8 border border-purple-500/30">
-            <Zap className="w-4 h-4" />
-            Powered by Javari AI
+      {/* Stats Bar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Total Tests</p>
+                <p className="text-2xl font-bold text-white">247+</p>
+              </div>
+            </div>
           </div>
-          
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Revolutionary
-            <span className="block bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              AI-Powered Testing
-            </span>
-          </h1>
-          
-          <p className="text-xl text-gray-300 mb-12 max-w-3xl mx-auto">
-            Test websites, mobile apps, and games with enterprise-grade AI. Get intelligent bug detection, 
-            automatic fixes, and comprehensive reports in minutes.
-          </p>
+          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Test Types</p>
+                <p className="text-2xl font-bold text-white">8</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                <Zap className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Avg Time</p>
+                <p className="text-2xl font-bold text-white">45s</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
+                <Shield className="w-5 h-5 text-orange-400" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Accuracy</p>
+                <p className="text-2xl font-bold text-white">99.9%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              href="/dashboard" 
-              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-2xl hover:shadow-purple-500/50"
+      {/* Test Type Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-2">Select Test Type</h2>
+          <p className="text-slate-400">Choose from 8 professional-grade testing engines</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {testTypes.map((test) => {
+            const Icon = test.icon
+            return (
+              <button
+                key={test.id}
+                onClick={() => setSelectedTest(test.id)}
+                className={`group relative bg-slate-900/50 backdrop-blur-sm border rounded-2xl p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-2xl ${
+                  selectedTest === test.id 
+                    ? 'border-blue-500 shadow-lg shadow-blue-500/20' 
+                    : 'border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                {/* Gradient Background */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${test.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity`} />
+                
+                {/* Icon */}
+                <div className={`w-14 h-14 bg-gradient-to-br ${test.color} rounded-xl flex items-center justify-center mb-4 shadow-lg`}>
+                  <Icon className="w-7 h-7 text-white" />
+                </div>
+
+                {/* Content */}
+                <h3 className="text-lg font-bold text-white mb-2">{test.name}</h3>
+                <p className="text-sm text-slate-400 mb-4 line-clamp-2">{test.description}</p>
+
+                {/* Stats */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Checks:</span>
+                    <span className="text-slate-300 font-medium">{test.checks}+</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Time:</span>
+                    <span className="text-slate-300 font-medium">{test.avgTime}</span>
+                  </div>
+                </div>
+
+                {/* Supported Formats */}
+                <div className="mt-4 pt-4 border-t border-slate-800">
+                  <div className="flex flex-wrap gap-1">
+                    {test.supported.slice(0, 2).map((format) => (
+                      <span key={format} className="px-2 py-1 bg-slate-800/50 text-slate-400 text-xs rounded">
+                        {format}
+                      </span>
+                    ))}
+                    {test.supported.length > 2 && (
+                      <span className="px-2 py-1 bg-slate-800/50 text-slate-400 text-xs rounded">
+                        +{test.supported.length - 2}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Selected Indicator */}
+                {selectedTest === test.id && (
+                  <div className="absolute top-4 right-4">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Start Test Button */}
+        {selectedTest && (
+          <div className="mt-8 flex justify-center">
+            <button 
+              onClick={() => {
+                setIsTestRunning(true)
+                // Navigate to test page
+                window.location.href = `/test/${selectedTest}`
+              }}
+              className="group px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 flex items-center gap-3"
             >
-              Start Free Trial
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-            <button className="px-8 py-4 bg-white/10 text-white rounded-lg font-bold text-lg hover:bg-white/20 transition-all backdrop-blur-sm border border-white/20">
-              View Demo
+              <Play className="w-5 h-5" />
+              Start {testTypes.find(t => t.id === selectedTest)?.name}
+              <span className="opacity-75">→</span>
             </button>
           </div>
+        )}
+      </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto">
-            {features.map((feature, index) => (
-              <div key={index} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                <div className="text-purple-400 mb-3">{feature.icon}</div>
-                <h3 className="text-white font-bold text-lg mb-2">{feature.title}</h3>
-                <p className="text-gray-400 text-sm">{feature.description}</p>
+      {/* Features Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <div className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 backdrop-blur-sm border border-slate-800 rounded-2xl p-8">
+          <h3 className="text-xl font-bold text-white mb-6">Why VerifyForge AI?</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Shield className="w-5 h-5 text-blue-400" />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Test Types Grid */}
-      <section className="py-20 px-4 bg-black/20">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              8 Powerful Testing Engines
-            </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Comprehensive testing suite covering every aspect of your digital products
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {testTypes.map((test, index) => (
-              <div 
-                key={index}
-                className="group bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:border-purple-500/50 transition-all hover:bg-white/10 cursor-pointer"
-              >
-                <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${test.color} flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform`}>
-                  {test.icon}
-                </div>
-                <h3 className="text-white font-bold text-xl mb-2">{test.title}</h3>
-                <p className="text-gray-400 text-sm">{test.description}</p>
+              <div>
+                <h4 className="text-white font-semibold mb-1">Most Comprehensive</h4>
+                <p className="text-sm text-slate-400">247+ checks across 8 test types - more than any competitor</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              How It Works
-            </h2>
-            <p className="text-xl text-gray-300">Three simple steps to complete testing</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-6">
-                1
-              </div>
-              <h3 className="text-white font-bold text-2xl mb-3">Submit Your Project</h3>
-              <p className="text-gray-400">Enter your URL, upload your app, or connect your game</p>
             </div>
-
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-6">
-                2
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Zap className="w-5 h-5 text-purple-400" />
               </div>
-              <h3 className="text-white font-bold text-2xl mb-3">AI Runs Tests</h3>
-              <p className="text-gray-400">Javari AI executes comprehensive testing across all selected engines</p>
+              <div>
+                <h4 className="text-white font-semibold mb-1">AI-Powered Analysis</h4>
+                <p className="text-sm text-slate-400">Advanced AI detects issues humans miss, including hallucinations</p>
+              </div>
             </div>
-
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-6">
-                3
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="w-5 h-5 text-green-400" />
               </div>
-              <h3 className="text-white font-bold text-2xl mb-3">Get Results & Fixes</h3>
-              <p className="text-gray-400">Receive detailed reports with automatic fix suggestions</p>
+              <div>
+                <h4 className="text-white font-semibold mb-1">Actionable Results</h4>
+                <p className="text-sm text-slate-400">Every issue includes specific suggestions to fix it</p>
+              </div>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-gradient-to-r from-purple-900 to-pink-900">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Ready to Revolutionize Your Testing?
-          </h2>
-          <p className="text-xl text-purple-100 mb-8">
-            Join hundreds of companies using VerifyForge AI for automated testing
-          </p>
-          <Link 
-            href="/dashboard" 
-            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-purple-900 rounded-lg font-bold text-lg hover:bg-gray-100 transition-all shadow-2xl"
-          >
-            Start Free Trial
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-          <p className="text-purple-200 text-sm mt-4">3 free tests • No credit card required</p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-black/40 border-t border-white/10 py-8">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-gray-400">
-            © 2025 CR AudioViz AI, LLC • VerifyForge AI • "Testing Revolution" 🚀
-          </p>
-          <p className="text-gray-500 text-sm mt-2">
-            Powered by Javari AI • Fortune 50 Quality Standards
-          </p>
-        </div>
-      </footer>
+      </div>
     </div>
-  );
+  )
 }
