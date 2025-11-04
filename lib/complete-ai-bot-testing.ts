@@ -21,7 +21,7 @@ export interface AITestResult {
 }
 
 export class CompleteAiBotTester {
-  async testAI(prompt: string, response: string): Promise<AITestResult> {
+  async testAiBot(prompt: string, response: string): Promise<AITestResult> {
     const issues: AITestResult['issues'] = [];
     const recommendations: string[] = [];
     let testsPassed = 0;
