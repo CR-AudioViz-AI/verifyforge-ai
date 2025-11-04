@@ -53,7 +53,7 @@ interface APITestResult {
 }
 
 export class CompleteApiTester {
-  async testApi(apiUrl: string, endpoints: string[], method: string = 'GET'): Promise<APITestResult> {
+  async testApi(apiUrl: string, endpoints: string[] = ['/'], method: string = 'GET'): Promise<APITestResult> {
     const issues: APITestResult['issues'] = [];
     const recommendations: string[] = [];
     let testsPassed = 0;
