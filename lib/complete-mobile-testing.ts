@@ -20,7 +20,7 @@ export interface MobileTestResult {
   };
 }
 
-export class MobileTester {
+export class CompleteMobileTester {
   async testMobile(url: string): Promise<MobileTestResult> {
     const issues: MobileTestResult['issues'] = [];
     const recommendations: string[] = [];
