@@ -1550,7 +1550,7 @@ export class CompleteWebTester {
     const inputs = $('input:not([type="hidden"]), select, textarea');
     const inputsWithLabels = inputs.filter((_, el) => {
       const id = $(el).attr('id');
-      return id && $(`label[for="${id}"]`).length > 0;
+      return !!id && $(`label[for="${id}"]`).length > 0;
     }).length;
     const formLabels = inputs.length === 0 || inputsWithLabels === inputs.length;
 
