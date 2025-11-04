@@ -1150,7 +1150,7 @@ export class CompleteWebTester {
   private calculateDOMDepth($: cheerio.CheerioAPI): number {
     let maxDepth = 0;
     
-    const calculateDepth = (element: cheerio.Element, depth: number) => {
+    const calculateDepth = (element: cheerio.AnyNode, depth: number) => {
       if (depth > maxDepth) maxDepth = depth;
       $(element).children().each((_, child) => {
         calculateDepth(child, depth + 1);
