@@ -19,7 +19,7 @@ export interface ToolTestResult {
   };
 }
 
-export class ToolTester {
+export class CompleteToolTester {
   async testTool(toolUrl: string): Promise<ToolTestResult> {
     const issues: ToolTestResult['issues'] = [];
     const recommendations: string[] = [];
