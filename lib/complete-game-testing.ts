@@ -38,7 +38,7 @@ export interface GameTestResult {
   };
 }
 
-export class GameTester {
+export class CompleteGameTester {
   async testGame(file: File): Promise<GameTestResult> {
     const issues: GameTestResult['issues'] = [];
     const recommendations: string[] = [];
