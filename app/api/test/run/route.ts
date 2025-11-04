@@ -1,14 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  CompleteWebTester,
-  CompleteDocumentTester,
-  CompleteApiTester,
-  CompleteAiBotTester,
-  CompleteGameTester,
-  CompleteMobileTester,
-  CompleteAvatarTester,
-  CompleteToolTester
-} from '@/lib'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300 // 5 minutes
@@ -31,6 +21,7 @@ export async function POST(request: NextRequest) {
         if (!url) {
           return NextResponse.json({ error: 'URL is required for web testing' }, { status: 400 })
         }
+        const { CompleteWebTester } = await import('@/lib/complete-web-testing')
         const tester = new CompleteWebTester()
         results = await tester.testWebsite(url)
         break
@@ -40,6 +31,7 @@ export async function POST(request: NextRequest) {
         if (!file) {
           return NextResponse.json({ error: 'File is required for document testing' }, { status: 400 })
         }
+        const { CompleteDocumentTester } = await import('@/lib/complete-document-testing')
         const tester = new CompleteDocumentTester()
         results = await tester.testDocument(file)
         break
@@ -49,6 +41,7 @@ export async function POST(request: NextRequest) {
         if (!url) {
           return NextResponse.json({ error: 'API endpoint URL is required' }, { status: 400 })
         }
+        const { CompleteApiTester } = await import('@/lib/complete-api-testing')
         const tester = new CompleteApiTester()
         results = await tester.testApi(url)
         break
@@ -58,6 +51,7 @@ export async function POST(request: NextRequest) {
         if (!url) {
           return NextResponse.json({ error: 'AI endpoint URL is required' }, { status: 400 })
         }
+        const { CompleteAiBotTester } = await import('@/lib/complete-ai-bot-testing')
         const tester = new CompleteAiBotTester()
         results = await tester.testAiBot(url)
         break
@@ -67,6 +61,7 @@ export async function POST(request: NextRequest) {
         if (!file) {
           return NextResponse.json({ error: 'File is required for game testing' }, { status: 400 })
         }
+        const { CompleteGameTester } = await import('@/lib/complete-game-testing')
         const tester = new CompleteGameTester()
         results = await tester.testGame(file)
         break
@@ -76,6 +71,7 @@ export async function POST(request: NextRequest) {
         if (!file) {
           return NextResponse.json({ error: 'File is required for mobile testing' }, { status: 400 })
         }
+        const { CompleteMobileTester } = await import('@/lib/complete-mobile-testing')
         const tester = new CompleteMobileTester()
         results = await tester.testMobileApp(file)
         break
@@ -85,6 +81,7 @@ export async function POST(request: NextRequest) {
         if (!file) {
           return NextResponse.json({ error: 'File is required for avatar testing' }, { status: 400 })
         }
+        const { CompleteAvatarTester } = await import('@/lib/complete-avatar-testing')
         const tester = new CompleteAvatarTester()
         results = await tester.testAvatar(file)
         break
@@ -94,6 +91,7 @@ export async function POST(request: NextRequest) {
         if (!url) {
           return NextResponse.json({ error: 'Tool URL is required' }, { status: 400 })
         }
+        const { CompleteToolTester } = await import('@/lib/complete-tool-testing')
         const tester = new CompleteToolTester()
         results = await tester.testTool(url)
         break
