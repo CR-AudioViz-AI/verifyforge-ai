@@ -3,11 +3,14 @@
 // Routes to appropriate testing engine based on test type
 
 import { NextRequest, NextResponse } from 'next/server';
-import { RealWebTester } from '@/lib/real-web-testing';
-import DocumentTester from '@/lib/document-testing';
-import APITester from '@/lib/api-testing';
-import AIBotTester from '@/lib/ai-bot-testing';
-import { GameTester, MobileTester, AvatarTester, ToolTester } from '@/lib/comprehensive-testing';
+import { CompleteWebTester } from '@/lib/complete-web-testing';
+import { CompleteDocumentTester } from '@/lib/complete-document-testing';
+import { CompleteApiTester } from '@/lib/complete-api-testing';
+import { CompleteAiBotTester } from '@/lib/complete-ai-bot-testing';
+import { CompleteGameTester } from '@/lib/complete-game-testing';
+import { CompleteMobileTester } from '@/lib/complete-mobile-testing';
+import { CompleteAvatarTester } from '@/lib/complete-avatar-testing';
+import { CompleteToolTester } from '@/lib/complete-tool-testing';
 
 // Simple in-memory credit tracking
 let userCredits = {
@@ -102,65 +105,49 @@ export async function POST(req: NextRequest) {
       switch (testType) {
         case 'web':
           if (!targetUrl) throw new Error('URL required for web testing');
-          const webTester = new RealWebTester((progress) => {
-            testProgressStore.set(testId, progress);
-          });
+          const webTester = new CompleteWebTester();
           testResults = await webTester.testWebsite(targetUrl);
           break;
 
         case 'document':
           if (!file) throw new Error('File required for document testing');
-          const docTester = new DocumentTester((progress) => {
-            testProgressStore.set(testId, progress);
-          });
+          const docTester = new CompleteDocumentTester();
           testResults = await docTester.testDocument(file);
           break;
 
         case 'api':
           if (!targetUrl) throw new Error('URL required for API testing');
-          const apiTester = new APITester((progress) => {
-            testProgressStore.set(testId, progress);
-          });
-          testResults = await apiTester.testAPI(targetUrl);
+          const apiTester = new CompleteApiTester();
+          testResults = await apiTester.testApi(targetUrl);
           break;
 
         case 'ai':
           if (!targetUrl) throw new Error('URL required for AI/Bot testing');
-          const aiTester = new AIBotTester((progress) => {
-            testProgressStore.set(testId, progress);
-          });
-          testResults = await aiTester.testAIBot(targetUrl);
+          const aiTester = new CompleteAiBotTester();
+          testResults = await aiTester.testAiBot(targetUrl);
           break;
 
         case 'game':
           if (!file) throw new Error('File required for game testing');
-          const gameTester = new GameTester((progress) => {
-            testProgressStore.set(testId, progress);
-          });
+          const gameTester = new CompleteGameTester();
           testResults = await gameTester.testGame(file);
           break;
 
         case 'mobile':
           if (!file) throw new Error('File required for mobile testing');
-          const mobileTester = new MobileTester((progress) => {
-            testProgressStore.set(testId, progress);
-          });
+          const mobileTester = new CompleteMobileTester();
           testResults = await mobileTester.testMobileApp(file);
           break;
 
         case 'avatar':
           if (!file) throw new Error('File required for avatar testing');
-          const avatarTester = new AvatarTester((progress) => {
-            testProgressStore.set(testId, progress);
-          });
+          const avatarTester = new CompleteAvatarTester();
           testResults = await avatarTester.testAvatar(file);
           break;
 
         case 'tool':
           if (!targetUrl) throw new Error('URL required for tool testing');
-          const toolTester = new ToolTester((progress) => {
-            testProgressStore.set(testId, progress);
-          });
+          const toolTester = new CompleteToolTester();
           testResults = await toolTester.testTool(targetUrl);
           break;
 
