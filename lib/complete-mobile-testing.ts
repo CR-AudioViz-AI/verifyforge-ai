@@ -120,7 +120,7 @@ interface MobileTestResult {
 // COMPLETE MOBILE APP TESTER CLASS
 // ============================================================================
 
-export class CompleteMobileAppTester {
+export class CompleteMobileTester {
   private progressCallback?: (progress: TestProgress) => void;
 
   constructor(progressCallback?: (progress: TestProgress) => void) {
