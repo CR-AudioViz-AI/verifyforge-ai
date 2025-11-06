@@ -5,7 +5,7 @@
 import { jsPDF } from 'jspdf';
 
 interface ReportConfig {
-  title: string;
+  title?: string;
   companyName?: string;
   logo?: string;
   includeCharts?: boolean;
