@@ -21,7 +21,10 @@
     "framer-motion": "^11.0.0",
     "recharts": "^2.8.0",
     "sharp": "^0.33.2",
-    "jspdf": "^2.5.1"
+    "jspdf": "^2.5.1",
+    "tesseract.js": "^5.0.5",
+    "docx": "^8.5.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "20.11.5",
