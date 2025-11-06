@@ -391,9 +391,9 @@ export class CompleteAvatarTester {
     this.updateProgress('optimization', 95, 'Evaluating optimization...');
 
     // Check 39-42: Optimization features
-    const lodLevels = 0;
-    const occlusionCulling = false;
-    const batchingFriendly = true;
+    const lodLevels: number = 0;
+    const occlusionCulling: boolean = false;
+    const batchingFriendly: boolean = true;
 
     if (lodLevels >= 2) {
       testsPassed++;
