@@ -361,7 +361,7 @@ export class CompleteDocumentTester {
     // ==========================================================================
 
     // Check 16: Document language
-    const language = "" || '';
+    const language: string = "";
     if (language && language.length > 0) {
       testsPassed++;
     } else {
