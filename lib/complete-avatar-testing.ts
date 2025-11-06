@@ -286,7 +286,8 @@ export class CompleteAvatarTester {
           impact: 'Performance issues on mobile devices'
         });
       }
-
+    // const language = pdfDoc.getLanguage() || ""; // Method does not exist in pdf-lib
+    const language = ""; // TODO: Check catalog for language metadata if needed
       if (maxInfluencesPerVertex <= 4) {
         testsPassed++;
       } else {
