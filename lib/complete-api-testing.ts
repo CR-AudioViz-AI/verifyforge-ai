@@ -20,6 +20,7 @@
 // HENDERSON STANDARD - NO FAKE DATA
 
 import axios from 'axios';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -202,7 +203,7 @@ export class CompleteApiTester {
       let testUrl: URL;
       try {
         testUrl = new URL(url);
-      } catch (e) {
+      } catch (e: unknown) {
         throw new Error('Invalid URL format');
       }
       testsPassed++;
@@ -226,7 +227,7 @@ export class CompleteApiTester {
             }
           });
           performanceResults.push(Date.now() - startTime);
-        } catch (e) {
+        } catch (e: unknown) {
           performanceResults.push(10000); // Timeout
         }
       }
@@ -429,7 +430,7 @@ export class CompleteApiTester {
             errorFormat = 'consistent';
             testsPassed++;
           }
-        } catch (e) {
+        } catch (e: unknown) {
           errorFormat = 'inconsistent';
           testsWarning++;
         }
@@ -483,7 +484,7 @@ export class CompleteApiTester {
             testsPassed++;
           }
         }
-      } catch (e) {
+      } catch (e: unknown) {
         schemaIssues.push('Invalid JSON response');
         testsFailed++;
       }
@@ -513,9 +514,9 @@ export class CompleteApiTester {
               openApiDetected = true;
               break;
             }
-          } catch (e) {}
+          } catch (e: unknown) {}
         }
-      } catch (e) {}
+      } catch (e: unknown) {}
 
       if (!openApiDetected) {
         issues.push({
@@ -681,7 +682,7 @@ export class CompleteApiTester {
         }
       };
 
-    } catch (error) {
+    } catch (error: unknown) {
       throw new Error(`API testing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
