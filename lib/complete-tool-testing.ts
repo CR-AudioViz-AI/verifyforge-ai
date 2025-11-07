@@ -3,6 +3,7 @@
 // Created: November 4, 2025
 
 import axios from 'axios';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 interface TestProgress {
   stage: string;
@@ -214,7 +215,7 @@ export class CompleteToolTester {
           impact: 'Intermittent access issues'
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       testsFailed++;
       issues.push({
         severity: 'critical',
