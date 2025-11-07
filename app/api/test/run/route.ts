@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 export const runtime = 'nodejs'
 export const maxDuration = 300 // 5 minutes
@@ -102,8 +103,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(results)
-  } catch (error) {
-    console.error('Test execution error:', error)
+  } catch (error: unknown) {
+    logError(\'Test execution error:\', error)
     return NextResponse.json(
       { error: 'Test execution failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
