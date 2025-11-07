@@ -4,6 +4,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -56,7 +57,7 @@ export class JavariAutoFix {
         // Log the fix attempt
         await this.logFixAttempt(issue.id, fixResult);
 
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`Failed to generate fix for issue ${issue.id}:`, error);
       }
     }
@@ -98,7 +99,7 @@ export class JavariAutoFix {
         // Try to extract JSON from response
         const jsonMatch = response.match(/\{[\s\S]*\}/);
         parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-      } catch (e) {
+      } catch (e: unknown) {
         parsed = {
           confidence: 50,
           fix_code: response,
@@ -115,8 +116,8 @@ export class JavariAutoFix {
         applied: false
       };
 
-    } catch (error) {
-      console.error('Fix generation error:', error);
+    } catch (error: unknown) {
+      logError(\'Fix generation error:\', error);
       
       return {
         issue_id: issue.id,
