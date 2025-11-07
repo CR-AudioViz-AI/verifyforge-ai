@@ -18,6 +18,7 @@ import { CompleteToolTester } from './complete-tool-testing';
 import { CompleteApiTester } from './complete-api-testing';
 import { CompleteMobileTester } from './complete-mobile-testing';
 import { JavariAutoFix } from './javari-autofix';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 export interface TestSubmission {
   id: string;
@@ -119,8 +120,8 @@ export async function executeTests(submission: TestSubmission): Promise<TestResu
       credits_used: creditsUsed
     };
 
-  } catch (error) {
-    console.error('Test execution error:', error);
+  } catch (error: unknown) {
+    logError(\'Test execution error:\', error);
     
     await supabase
       .from('test_submissions')
