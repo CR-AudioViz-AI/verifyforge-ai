@@ -5,6 +5,7 @@
 import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
 import Tesseract from 'tesseract.js';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 interface TestProgress {
   stage: string;
@@ -363,7 +364,7 @@ export class CompleteDocumentTester {
         });
         recommendations.push('Run OCR on scanned documents');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       testsFailed++;
       issues.push({
         severity: 'high',
@@ -605,7 +606,7 @@ export class CompleteDocumentTester {
       } else {
         testsWarning++;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       testsWarning++;
       recommendations.push('OCR extraction failed - image may not contain text');
     }
