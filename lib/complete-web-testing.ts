@@ -22,6 +22,7 @@
 
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -464,7 +465,7 @@ export class CompleteWebTester {
       let testUrl: URL;
       try {
         testUrl = new URL(url);
-      } catch (e) {
+      } catch (e: unknown) {
         throw new Error('Invalid URL format');
       }
       testsPassed++;
@@ -972,7 +973,7 @@ export class CompleteWebTester {
         benchmarking
       };
 
-    } catch (error) {
+    } catch (error: unknown) {
       throw new Error(`Testing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -1223,7 +1224,7 @@ export class CompleteWebTester {
       try {
         const data = JSON.parse($(el).html() || '{}');
         if (data['@type']) structuredDataTypes.push(data['@type']);
-      } catch (e) {}
+      } catch (e: unknown) {}
     });
 
     // Open Graph
@@ -1428,7 +1429,7 @@ export class CompleteWebTester {
             thirdPartyDomains.add(scriptHost);
           }
         }
-      } catch (e) {}
+      } catch (e: unknown) {}
     });
 
     // Forms over HTTPS
@@ -1911,7 +1912,7 @@ export class CompleteWebTester {
           } else if (link.startsWith('http://')) {
             httpLinks.push(link);
           }
-        } catch (e) {}
+        } catch (e: unknown) {}
       } else if (link.startsWith('/')) {
         internalLinks.push(link);
       }
@@ -1949,7 +1950,7 @@ export class CompleteWebTester {
         if (responseTime > 3000) {
           slowLinks.push(link);
         }
-      } catch (e) {
+      } catch (e: unknown) {
         // Link test failed - might be broken
       }
     }
