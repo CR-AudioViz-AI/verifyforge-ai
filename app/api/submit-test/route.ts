@@ -1,3 +1,4 @@
+import { getErrorMessage, logError } from '@/lib/error-handler';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -37,10 +38,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(testResult, { status: 200 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Test submission error:', error);
     return NextResponse.json(
-      { error: 'Failed to submit test', details: error.message },
+      { error: 'Failed to submit test', details: getErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -92,10 +93,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(testResult, { status: 200 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Test retrieval error:', error);
     return NextResponse.json(
-      { error: 'Failed to retrieve test', details: error.message },
+      { error: 'Failed to retrieve test', details: getErrorMessage(error) },
       { status: 500 }
     );
   }
