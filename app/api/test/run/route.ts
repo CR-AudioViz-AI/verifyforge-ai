@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(results)
   } catch (error: unknown) {
-    logError(\'Test execution error:\', error)
+    logError('Test execution error:', error)
     return NextResponse.json(
       { error: 'Test execution failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
