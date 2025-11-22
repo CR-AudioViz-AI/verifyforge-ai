@@ -287,7 +287,7 @@ export class CompleteDocumentTester {
 
     this.updateProgress('pdf-accessibility', 45, 'Checking accessibility...');
 
-    const language = pdfDoc.getLanguage() || '';
+    const language = ''; // pdf-lib doesn't support getLanguage()
     if (language && language.length > 0) {
       testsPassed++;
     } else {
