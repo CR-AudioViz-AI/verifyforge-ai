@@ -37,7 +37,7 @@ export function BrandedHeader({ appName, appLogo, quickLinks = [] }: BrandedHead
   const checkAuthStatus = async () => {
     try {
       const session = await CentralServices.Auth.getSession();
-      if (session.success && session.data?.user) {
+      if (session.success && session.data) {
         setIsLoggedIn(true);
         setUser({
           name: session.data.user.user_metadata?.full_name,
