@@ -18,7 +18,7 @@
     "pdf-lib": "^1.17.1",
     "axios": "^1.6.5",
     "cheerio": "^1.0.0-rc.12",
-    "lucide-react": "^0.263.1",
+    "lucide-react": "^0.575.0",
     "framer-motion": "^11.0.0",
     "recharts": "^2.8.0",
     "sharp": "^0.33.2",
