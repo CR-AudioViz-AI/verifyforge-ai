@@ -24,7 +24,7 @@
     "sharp": "^0.33.2",
     "jspdf": "^2.5.1",
     "tesseract.js": "^5.0.5",
-    "docx": "^8.5.0",
+    "docx": "^9.5.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
