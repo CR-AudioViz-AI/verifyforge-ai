@@ -19,7 +19,7 @@
     "axios": "^1.6.5",
     "cheerio": "^1.0.0-rc.12",
     "lucide-react": "^0.575.0",
-    "framer-motion": "^11.0.0",
+    "framer-motion": "^12.34.3",
     "recharts": "^2.8.0",
     "sharp": "^0.34.5",
     "jspdf": "^2.5.1",
