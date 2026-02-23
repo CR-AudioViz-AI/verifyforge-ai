@@ -20,7 +20,7 @@
     "cheerio": "^1.0.0-rc.12",
     "lucide-react": "^0.575.0",
     "framer-motion": "^11.0.0",
-    "recharts": "^2.8.0",
+    "recharts": "^3.7.0",
     "sharp": "^0.34.5",
     "jspdf": "^2.5.1",
     "tesseract.js": "^5.0.5",
