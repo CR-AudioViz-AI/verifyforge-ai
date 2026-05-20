@@ -1,38 +1,35 @@
-import Script from 'next/script';
-import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-
-const inter = Inter({ subsets: ['latin'] })
-
+// app/layout.tsx — server-rendered brand shell
+// CR AudioViz AI · EIN: 39-3646201 · May 2026
+import type { Metadata } from 'next'
+export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-  title: 'VerifyForge AI - Professional Testing Platform',
-  description: 'Part of the CR AudioViz AI creative ecosystem',
+  title: 'Javari Verify',
+  description: 'AI identity verification and document authentication platform.',
+  openGraph: { title: 'Javari Verify', description: 'AI identity verification and document authentication platform.', type: 'website' },
 }
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 5,
-  userScalable: true,
-  viewportFit: 'cover',
-}
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <meta name="format-detection" content="telephone=no" />
-      </head>
-      <body className={`${inter.className} min-h-screen min-h-[100dvh]`}>
-        <div className="min-h-screen min-h-[100dvh] bg-gradient-to-br from-gray-50 to-gray-100">
-          {children}
+      <body style={{ margin: 0, padding: 0, fontFamily: 'system-ui, sans-serif' }}>
+        <div style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(8px)', padding: '6px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 200 }}>
+          <a href="https://craudiovizai.com" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+            <span>✅</span>
+            <span style={{ color: '#10b981' }}>Javari Verify</span>
+            <span style={{ color: '#374151', fontSize: 11, marginLeft: 4 }}>· CR AudioViz AI · EIN 39-3646201</span>
+          </a>
+          <a href="https://craudiovizai.com/auth/signup" style={{ background: '#10b981', color: '#000', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+            Free to Start →
+          </a>
         </div>
-        <Script src="https://javariai.com/embed.js" strategy="lazyOnload" />
+        {children}
+        <footer style={{ background: '#050608', borderTop: '1px solid rgba(255,255,255,0.05)', padding: '16px 24px', textAlign: 'center' }}>
+          <p style={{ color: '#1f2937', fontSize: 11, margin: 0, fontFamily: 'system-ui' }}>
+            © 2026 CR AudioViz AI, LLC — EIN: 39-3646201 · Fort Myers, Florida · Your Story. Our Design. ·{' '}
+            <a href="https://craudiovizai.com" style={{ color: '#374151', textDecoration: 'none' }}>craudiovizai.com</a>
+            {' '}·{' '}
+            <a href="https://craudiovizai.com/auth/signup" style={{ color: '#10b981', textDecoration: 'none', fontWeight: 600 }}>Sign Up Free</a>
+          </p>
+        </footer>
       </body>
     </html>
   )
