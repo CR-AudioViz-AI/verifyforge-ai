@@ -8,6 +8,10 @@ on:
   schedule:
     - cron: '0 4 * * 1' # Weekly on Mondays at 4 AM
 
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
 jobs:
   analyze:
     name: Analyze Code
@@ -20,7 +24,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'javascript', 'typescript' ]
+        # 2026-08-12: was [ 'javascript', 'typescript' ] — two jobs running
+        # the identical analysis. GitHub merged them into one language.
+        language: [ 'javascript-typescript' ]
 
     steps:
     - name: Checkout repository
