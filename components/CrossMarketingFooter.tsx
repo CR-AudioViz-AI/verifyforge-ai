@@ -5,12 +5,12 @@ import { ExternalLink } from 'lucide-react';
 const MAIN_SITE = process.env.NEXT_PUBLIC_MAIN_SITE_URL || 'https://craudiovizai.com';
 
 const apps = [
-  { name: 'Market Oracle', url: 'https://crav-market-oracle.vercel.app', desc: 'AI Stock Analysis' },
-  { name: 'Games Hub', url: 'https://crav-games-hub.vercel.app', desc: '1200+ Games' },
-  { name: 'Logo Studio', url: 'https://crav-logo-studio.vercel.app', desc: 'AI Logo Creation' },
-  { name: 'PDF Builder', url: 'https://crav-pdf-builder.vercel.app', desc: 'Professional PDFs' },
-  { name: 'eBook Creator', url: 'https://crav-ebook-creator.vercel.app', desc: 'Publish eBooks' },
-  { name: 'Invoice Generator', url: 'https://crav-invoice-generator.vercel.app', desc: 'Professional Invoices' },
+  { name: 'Market Oracle', url: 'https://craudiovizai.com/apps/market-oracle', desc: 'AI Stock Analysis' },
+  { name: 'Javari Games', url: 'https://craudiovizai.com/apps/games', desc: 'Browser games, free to play' },
+  { name: 'Logo Studio', url: 'https://javarilogo.com/brand', desc: 'AI Logo Creation' },
+  { name: 'PDF Builder', url: 'https://craudiovizai.com/apps/pdf-builder', desc: 'Professional PDFs' },
+  { name: 'eBook Creator', url: 'https://craudiovizai.com/apps/ebook-creator', desc: 'Publish eBooks' },
+  { name: 'Invoice Generator', url: 'https://craudiovizai.com/apps/invoice-generator', desc: 'Professional Invoices' },
 ];
 
 export default function CrossMarketingFooter() {

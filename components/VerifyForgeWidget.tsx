@@ -13,7 +13,7 @@ interface VerifyForgeWidgetProps {
  * 
  * This component can be embedded into any page of the main website.
  * 
- * Usage in crav-website:
+ * Usage in javari-website:
  * 
  * import { VerifyForgeWidget } from '@/components/VerifyForgeWidget'
  * 
@@ -22,7 +22,7 @@ interface VerifyForgeWidgetProps {
  * OR use iframe for complete isolation:
  * 
  * <iframe 
- *   src="https://crav-verifyforge.vercel.app" 
+ *   src="https://verifyforgeai.com" 
  *   width="100%" 
  *   height="600px"
  *   frameBorder="0"
@@ -33,7 +33,7 @@ export function VerifyForgeWidget({
   theme = 'dark',
   defaultTestType 
 }: VerifyForgeWidgetProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_VERIFYFORGE_URL || 'https://crav-verifyforge.vercel.app'
+  const baseUrl = process.env.NEXT_PUBLIC_VERIFYFORGE_URL || 'https://verifyforgeai.com'
   
   if (mode === 'compact') {
     return (
@@ -106,7 +106,7 @@ export function QuickTestButton({
   label?: string
   size?: 'sm' | 'md' | 'lg'
 }) {
-  const baseUrl = process.env.NEXT_PUBLIC_VERIFYFORGE_URL || 'https://crav-verifyforge.vercel.app'
+  const baseUrl = process.env.NEXT_PUBLIC_VERIFYFORGE_URL || 'https://verifyforgeai.com'
   
   const sizeClasses = {
     sm: 'px-4 py-2 text-sm',

@@ -42,10 +42,10 @@
   --space-2xl: 3rem;     /* 48px */
   
   /* Brand Colors */
-  --crav-blue: #2563eb;
-  --crav-green: #16a34a;
-  --crav-purple: #7c3aed;
-  --crav-gradient: linear-gradient(135deg, var(--crav-blue), var(--crav-green));
+  --javari-blue: #2563eb;
+  --javari-green: #16a34a;
+  --javari-purple: #7c3aed;
+  --javari-gradient: linear-gradient(135deg, var(--javari-blue), var(--javari-green));
   
   /* Typography Scale */
   --font-size-xs: 0.75rem;    /* 12px */
@@ -198,7 +198,7 @@ textarea:focus,
 select:focus,
 button:focus,
 a:focus {
-  outline: 2px solid var(--crav-blue);
+  outline: 2px solid var(--javari-blue);
   outline-offset: 2px;
 }
 
@@ -208,7 +208,7 @@ textarea:focus-visible,
 select:focus-visible,
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid var(--crav-blue);
+  outline: 2px solid var(--javari-blue);
   outline-offset: 2px;
 }
 
@@ -615,7 +615,7 @@ small, .text-small {
   justify-content: center;
   min-height: var(--touch-target-min);
   padding: var(--space-sm) var(--space-lg);
-  background: var(--crav-gradient);
+  background: var(--javari-gradient);
   color: white;
   font-weight: 600;
   border: none;
@@ -648,7 +648,7 @@ small, .text-small {
   width: 56px;
   height: 56px;
   border-radius: var(--radius-full);
-  background: var(--crav-gradient);
+  background: var(--javari-gradient);
   color: white;
   display: flex;
   align-items: center;
