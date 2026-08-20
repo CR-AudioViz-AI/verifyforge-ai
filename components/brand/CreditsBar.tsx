@@ -7,7 +7,10 @@ import { CREDITS_CONFIG } from './brand-config';
 interface CreditsBarProps {
   isLoggedIn: boolean;
   credits?: number;
-  plan?: 'free' | 'pro' | 'business';
+  // 2026-08-21: 'enterprise' was missing. It is a real tier in the User contract,
+  // so an enterprise customer rendered as free - the most expensive plan showing
+  // as the cheapest. Fixed across 53 copies of this file.
+  plan?: 'free' | 'pro' | 'business' | 'enterprise';
   userName?: string;
 }
 
@@ -27,7 +30,8 @@ export function CreditsBar({ isLoggedIn, credits = 0, plan = 'free', userName }:
   const isLowCredits = credits <= CREDITS_CONFIG.warningThreshold;
   const isCriticalCredits = credits <= CREDITS_CONFIG.criticalThreshold;
   const planInfo = CREDITS_CONFIG.plans[plan];
-  const canUpgrade = plan !== 'business';
+  // Enterprise is the top tier - nothing above it to upgrade to.
+  const canUpgrade = plan !== 'business' && plan !== 'enterprise';
 
   return (
     <div className="w-full bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
