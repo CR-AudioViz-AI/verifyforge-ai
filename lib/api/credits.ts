@@ -1,39 +1,75 @@
 /**
  * lib/api/credits.ts
  *
- * Credit reservation and reconciliation.
+ * Verify's credit operations, backed entirely by the platform credit ledger.
  *
- * The pattern matters: reserve BEFORE the scan so a customer without balance is
- * turned away having spent nothing, then reconcile to the ACTUAL modules that
- * ran. A scan that fails reconciles to zero — a scan that did not complete is a
- * scan the customer does not pay for.
+ * This replaces the earlier placeholder that faked reserve/reconcile. There is
+ * no separate ledger here: reserveAndCharge calls the shared guardCredits, which
+ * checks balance, enforces daily limits and admin bypass, writes the debit, and
+ * hands back a refund() closure. If the scan then fails, we call that closure
+ * and the customer is made whole — the exact pattern the core system was built
+ * around so nobody is charged for work that did not complete.
  *
- * These functions front the platform credit system. Signatures are final; the
- * bodies call the shared ledger in the real deployment.
+ * Verify's price is dynamic, so it always passes override_cost. The credit floor
+ * (1 credit = $0.01) is enforced by the engine's registry at module registration,
+ * so a cost reaching here is already >= 1.
  *
  * CR AudioViz AI, LLC · EIN 39-3646201 · 2026-08-23
  */
 
-export interface Reservation {
+import { guardCredits, type GuardResult } from './central';
+
+export interface ChargeResult {
   readonly ok: boolean;
-  readonly reservationId: string;
   readonly balance: number;
+  readonly reason: string;
+  /** Present only when credits were actually taken. Reverses the charge. */
+  readonly refund: (() => Promise<unknown>) | null;
 }
 
-export async function reserveCredits(userId: string, credits: number): Promise<Reservation> {
-  // Real implementation: atomic check-and-hold against the credit ledger.
-  // Fails closed — if the balance cannot be read, the reservation is refused.
-  void userId;
-  return { ok: true, reservationId: `res_${Date.now().toString(36)}`, balance: credits };
-}
-
-export async function reconcileCredits(
+/**
+ * Checks and charges in one call. On success, `refund` reverses exactly this
+ * charge if the scan fails. Admins pass through uncharged, handled inside
+ * guardCredits — Verify does not special-case them.
+ */
+export async function reserveAndCharge(
   userId: string,
-  reservationId: string,
-  actualCredits: number,
-): Promise<void> {
-  // Real implementation: settle the hold to actualCredits and release the rest.
-  void userId;
-  void reservationId;
-  void actualCredits;
+  credits: number,
+  label: string,
+): Promise<ChargeResult> {
+  const guard: GuardResult = await guardCredits(userId, label, { override_cost: credits });
+
+  if (!guard.ok) {
+    return {
+      ok: false,
+      balance: guard.balance ?? 0,
+      reason: guard.error ?? 'Credit check failed.',
+      refund: null,
+    };
+  }
+
+  return {
+    ok: true,
+    balance: guard.balance ?? 0,
+    reason: 'Charged.',
+    refund: guard.refund ?? null,
+  };
+}
+
+/**
+ * Dry run: what would this scan cost, and can the user afford it, without
+ * charging. Backs the /plan endpoint so the price shown is the price the ledger
+ * would actually apply.
+ */
+export async function quote(
+  userId: string,
+  credits: number,
+  label: string,
+): Promise<{ affordable: boolean; balance: number; reason: string }> {
+  const guard = await guardCredits(userId, label, { override_cost: credits, dry_run: true });
+  return {
+    affordable: guard.ok,
+    balance: guard.balance ?? 0,
+    reason: guard.ok ? 'ok' : guard.error ?? 'Insufficient credits.',
+  };
 }

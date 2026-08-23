@@ -22,6 +22,7 @@ import {
   type TargetKind,
 } from '@/lib/modules/target';
 import type { AuthProof, SessionStrategy } from '@/lib/engine/session';
+import { getUserFromRequest } from './central';
 
 export type Resolved<T> = { kind: 'ok'; value: T } | { kind: 'error'; message: string };
 
@@ -254,15 +255,12 @@ export type OwnerResult =
  * through for the credit layer to resolve.
  */
 export async function requireOwner(request: NextRequest): Promise<OwnerResult> {
-  const authorization = request.headers.get('authorization');
-  if (authorization === null || !authorization.startsWith('Bearer ')) {
+  // Real platform auth: verifies the Supabase JWT via the shared service and
+  // returns the authenticated user id. No placeholder — this is the same
+  // getUserFromRequest every other app in the ecosystem uses.
+  const user = await getUserFromRequest(request);
+  if (user === null) {
     return { kind: 'error', status: 401, message: 'Authentication required.' };
   }
-  const token = authorization.slice('Bearer '.length).trim();
-  if (token.length === 0) {
-    return { kind: 'error', status: 401, message: 'Empty bearer token.' };
-  }
-  // Placeholder resolution: the real version verifies the JWT signature and
-  // reads the sub claim. Kept explicit so it cannot be mistaken for verified.
-  return { kind: 'ok', userId: `user:${token.slice(0, 12)}` };
+  return { kind: 'ok', userId: user.id };
 }

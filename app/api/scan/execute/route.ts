@@ -21,7 +21,8 @@ import { renderMarkdown } from '@/lib/modules/report';
 import { toSarif } from '@/lib/export/sarif';
 import { buildRegistry } from '@/lib/registry-instance';
 import { getHistoryStore } from '@/lib/store/history-instance';
-import { reserveCredits, reconcileCredits } from '@/lib/api/credits';
+import { reserveAndCharge } from '@/lib/api/credits';
+import { VERIFY_INTENTS } from '@/lib/api/central';
 import {
   resolveTarget,
   resolveApprovedProfile,
@@ -77,12 +78,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     summary: '',
   };
 
-  const reservation = await reserveCredits(owner.userId, estimate.totalCredits);
-  if (!reservation.ok) {
+  const charge = await reserveAndCharge(
+    owner.userId,
+    estimate.totalCredits,
+    VERIFY_INTENTS.scan,
+  );
+  if (!charge.ok) {
     return jsonError(
       402,
-      `This scan costs ${estimate.totalCredits} credits and your balance is ` +
-        `${reservation.balance}. No scan was run and nothing was charged.`,
+      `This scan costs ${estimate.totalCredits} credits. ${charge.reason} ` +
+        `Your balance is ${charge.balance}. No scan was run and nothing was charged.`,
     );
   }
 
@@ -99,9 +104,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       history,
     );
 
-    // Charge only for modules that actually executed.
+    // The estimate was charged up front. Refund the difference for any module
+    // that did not run, so the customer pays only for work performed.
     const actualCredits = outcome.run.creditsCharged;
-    await reconcileCredits(owner.userId, reservation.reservationId, actualCredits);
+    const overcharge = estimate.totalCredits - actualCredits;
+    if (overcharge > 0 && charge.refund !== null) {
+      // Partial refund via a second small credit is handled by the ledger; here
+      // we reverse the whole charge and it is re-applied at actualCredits only
+      // when they differ. For the common case (all ran) this is a no-op.
+      await charge.refund();
+      await reserveAndCharge(owner.userId, actualCredits, VERIFY_INTENTS.scan);
+    }
 
     const sarif = toSarif(outcome.report, outcome.run.results, registry.asMap());
 
@@ -118,9 +131,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       sarif,
     });
   } catch (error: unknown) {
-    // The scan failed after reservation. Release the hold — a scan that did not
+    // The scan failed after charging. Reverse it in full — a scan that did not
     // complete is a scan the customer does not pay for.
-    await reconcileCredits(owner.userId, reservation.reservationId, 0);
+    if (charge.refund !== null) await charge.refund();
     const message = error instanceof Error ? error.message : 'Scan failed.';
     return jsonError(502, `The scan did not complete and you were not charged: ${message}`);
   }
