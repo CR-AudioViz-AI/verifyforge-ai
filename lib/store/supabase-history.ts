@@ -57,7 +57,7 @@ export class SupabaseHistoryStore implements HistoryStore {
 
   async latestSnapshot(targetId: string): Promise<RunSnapshot | null> {
     const { data, error } = await this.client
-      .from('jv_runs')
+      .from('jvf_runs')
       .select('run_id, target_id, completed_at, access_tier, concluded_module_ids, report')
       .eq('target_id', targetId)
       .order('completed_at', { ascending: false })
@@ -87,7 +87,7 @@ export class SupabaseHistoryStore implements HistoryStore {
 
   async trackedFindings(targetId: string): Promise<readonly TrackedFinding[]> {
     const { data, error } = await this.client
-      .from('jv_findings')
+      .from('jvf_findings')
       .select(
         'fingerprint, target_id, state, finding, first_seen_run_id, first_seen_at, ' +
           'last_seen_run_id, last_seen_at, occurrences, verified_at, age_days',
@@ -125,7 +125,7 @@ export class SupabaseHistoryStore implements HistoryStore {
    * that does not exist.
    */
   async persist(snapshot: RunSnapshot, tracked: readonly TrackedFinding[]): Promise<void> {
-    const runInsert = await this.client.from('jv_runs').upsert(
+    const runInsert = await this.client.from('jvf_runs').upsert(
       {
         run_id: snapshot.runId,
         target_id: snapshot.targetId,
@@ -164,7 +164,7 @@ export class SupabaseHistoryStore implements HistoryStore {
     }));
 
     const findingUpsert = await this.client
-      .from('jv_findings')
+      .from('jvf_findings')
       .upsert(rows, { onConflict: 'target_id,fingerprint' });
 
     if (findingUpsert.error !== null) {

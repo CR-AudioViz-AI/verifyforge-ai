@@ -4,21 +4,21 @@
 -- never write a column name from memory.
 -- CR AudioViz AI, LLC · EIN 39-3646201 · 2026-08-23
 
-create table if not exists public.jv_targets (
+create table if not exists public.jvf_targets (
   id              text primary key,
   kind            text not null,
   label           text not null,
   address         text not null,
   access_tier     text not null,
-  authorization   jsonb not null default '{"kind":"none"}'::jsonb,
+  authz_grant     jsonb not null default '{"kind":"none"}'::jsonb,
   rate_limit_rps  numeric not null default 2,
   owner_id        uuid,
   created_at      timestamptz not null default now()
 );
 
-create table if not exists public.jv_runs (
+create table if not exists public.jvf_runs (
   run_id              text primary key,
-  target_id           text not null references public.jv_targets(id) on delete cascade,
+  target_id           text not null references public.jvf_targets(id) on delete cascade,
   profile_id          text not null,
   completed_at        timestamptz not null,
   access_tier         text not null,
@@ -33,12 +33,12 @@ create table if not exists public.jv_runs (
   report              jsonb not null,
   created_at          timestamptz not null default now()
 );
-create index if not exists jv_runs_target_completed_idx
-  on public.jv_runs (target_id, completed_at desc);
+create index if not exists jvf_runs_target_completed_idx
+  on public.jvf_runs (target_id, completed_at desc);
 
-create table if not exists public.jv_findings (
+create table if not exists public.jvf_findings (
   fingerprint       text not null,
-  target_id         text not null references public.jv_targets(id) on delete cascade,
+  target_id         text not null references public.jvf_targets(id) on delete cascade,
   rule_id           text not null,
   severity          text not null check (severity in ('BLOCKER','HIGH','MEDIUM','LOW')),
   state             text not null check (state in ('new','persisting','fixed','regressed')),
@@ -56,26 +56,26 @@ create table if not exists public.jv_findings (
   age_days          int not null default 0,
   primary key (target_id, fingerprint)
 );
-create index if not exists jv_findings_target_state_idx
-  on public.jv_findings (target_id, state);
+create index if not exists jvf_findings_target_state_idx
+  on public.jvf_findings (target_id, state);
 
-alter table public.jv_targets  enable row level security;
-alter table public.jv_runs     enable row level security;
-alter table public.jv_findings enable row level security;
+alter table public.jvf_targets  enable row level security;
+alter table public.jvf_runs     enable row level security;
+alter table public.jvf_findings enable row level security;
 
 -- Owner-scoped read. Writes are service-role only: a scan result the customer
 -- can edit is not evidence.
-create policy jv_targets_owner_read on public.jv_targets
+create policy jv_targets_owner_read on public.jvf_targets
   for select using (owner_id = auth.uid());
 
-create policy jv_runs_owner_read on public.jv_runs
+create policy jv_runs_owner_read on public.jvf_runs
   for select using (
-    exists (select 1 from public.jv_targets t
-            where t.id = jv_runs.target_id and t.owner_id = auth.uid())
+    exists (select 1 from public.jvf_targets t
+            where t.id = jvf_runs.target_id and t.owner_id = auth.uid())
   );
 
-create policy jv_findings_owner_read on public.jv_findings
+create policy jv_findings_owner_read on public.jvf_findings
   for select using (
-    exists (select 1 from public.jv_targets t
-            where t.id = jv_findings.target_id and t.owner_id = auth.uid())
+    exists (select 1 from public.jvf_targets t
+            where t.id = jvf_findings.target_id and t.owner_id = auth.uid())
   );
