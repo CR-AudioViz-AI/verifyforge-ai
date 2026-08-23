@@ -13,11 +13,13 @@ import { ModuleRegistry } from './modules/registry';
 import { hollowResponseModule } from './modules/checks/hollow-response';
 import { redirectIntegrityModule } from './modules/checks/redirect-integrity';
 import { idorAccessModule } from './modules/checks/idor-access';
+import { schemaColumnsModule } from './modules/checks/schema-columns';
 
 export function buildRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
   registry.register(hollowResponseModule);
   registry.register(redirectIntegrityModule);
   registry.register(idorAccessModule);
+  registry.register(schemaColumnsModule);
   return registry;
 }
