@@ -1,0 +1,42 @@
+# .github/workflows/proof.yml
+# Gate every change on the proof suite. If a claim we make to a customer stops
+# being true, the merge is blocked — that is the whole point of these tests.
+# CR AudioViz AI, LLC · EIN 39-3646201 · 2026-08-23
+name: proof
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, 'feat/**']
+
+jobs:
+  typecheck-and-prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install
+        run: npm ci || npm install
+
+      - name: Typecheck (strict)
+        # The engine compiles clean under strict + noUncheckedIndexedAccess +
+        # exactOptionalPropertyTypes. This fails the build if that ever regresses.
+        run: npx tsc --noEmit
+
+      - name: Prove — offline claims
+        # These need no network: lifecycle, credential deletion, SARIF interop.
+        run: |
+          npx tsx test/proof.lifecycle.ts
+          npx tsx test/proof.credentials.ts
+          npx tsx test/proof.sarif.ts
+
+      - name: Prove — live claims
+        # These hit real sites (example.com, docs.claude.com). Allowed to be flaky
+        # on network, but a genuine logic regression still fails them. Retried once.
+        run: npx tsx test/proof.claims.ts || npx tsx test/proof.claims.ts

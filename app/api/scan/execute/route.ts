@@ -76,6 +76,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     estimatedRuntimeMs: estimate.totalRuntimeMs,
     willNotRun: estimate.unrunnable,
     summary: '',
+    clustering: null,
   };
 
   const charge = await reserveAndCharge(

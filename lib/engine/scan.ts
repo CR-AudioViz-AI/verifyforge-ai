@@ -26,6 +26,7 @@ import { ModuleRegistry, runProfile, type LogSink, type ScanRun } from '../modul
 import { buildReport, type ScanReport } from '../modules/report';
 import type { Target } from '../modules/target';
 import { DEFAULT_BUDGET, discover, type DiscoveryBudget, type DiscoveryResult } from './discover';
+import { clusterRoutes, samplingBlindSpots, type ClusterResult } from './templates';
 import { openSession, type AuthProof, type SessionStrategy } from './session';
 import {
   diffRun,
@@ -44,6 +45,8 @@ export interface ScanPlan {
   readonly willNotRun: readonly { readonly moduleId: string; readonly reason: string }[];
   /** Shown to the customer before anything is charged. */
   readonly summary: string;
+  /** Present when discovery found enough routes to cluster into templates. */
+  readonly clustering: ClusterResult | null;
 }
 
 /**
@@ -59,35 +62,53 @@ export async function plan(
 ): Promise<ScanPlan> {
   const discovery = await discover(target, budget, signal);
 
-  const routes = discovery.routes.map((route) => route.url).join('\n');
+  // Cluster routes into templates so a large site is tested by template rather
+  // than by hammering every URL. A defect lives in a template, not a URL; testing
+  // representatives covers the site without a three-day crawl.
+  const clustering =
+    discovery.routes.length > 40 ? clusterRoutes(discovery.routes) : null;
+
+  const testUrls =
+    clustering !== null
+      ? clustering.routesToTest
+      : discovery.routes.map((route) => route.url);
+
   const resolved: ScanProfile = {
     ...profile,
-    inputs: { ...profile.inputs, routes },
+    inputs: { ...profile.inputs, routes: testUrls.join('\n') },
   };
 
   const estimate = registry.estimate(resolved, target);
 
-  // Modules are priced per run, but a run over 900 routes is not the same unit
-  // of work as a run over 40. Scale by discovered surface against the 40-route
-  // baseline the module estimates assume, with a floor of one baseline unit.
-  const surfaceUnits = Math.max(1, Math.ceil(discovery.routes.length / 40));
+  // Price by the work actually performed — representatives tested — against the
+  // 40-route baseline the module estimates assume. A million-URL site clustered
+  // to 18 representatives is priced as 18, not a million. This is what makes the
+  // product affordable at any size.
+  const surfaceUnits = Math.max(1, Math.ceil(testUrls.length / 40));
   const credits = estimate.totalCredits * surfaceUnits;
 
   const summary =
-    `Discovered ${discovery.routes.length} routes on ${target.label} ` +
-    `(${discovery.bySource.sitemap} from sitemap, ${discovery.bySource.link} by crawling, ` +
-    `${discovery.bySource.bundle} found in JavaScript bundles and not linked from anywhere). ` +
-    `${estimate.unrunnable.length} selected ${estimate.unrunnable.length === 1 ? 'check' : 'checks'} ` +
-    `cannot run against this target. ` +
-    `This scan will cost ${credits} credits.` +
-    (discovery.completeness === 'truncated'
-      ? ' Discovery hit its budget, so the surface may be larger than this.'
-      : '');
+    clustering !== null
+      ? `Discovered ${discovery.routes.length} routes on ${target.label}, which reduce to ` +
+        `${clustering.totalTemplates} templates. Testing ${clustering.routesToTest.length} ` +
+        `representative routes. ${estimate.unrunnable.length} selected ` +
+        `${estimate.unrunnable.length === 1 ? 'check' : 'checks'} cannot run. ` +
+        `This scan will cost ${credits} credits.`
+      : `Discovered ${discovery.routes.length} routes on ${target.label} ` +
+        `(${discovery.bySource.sitemap} from sitemap, ${discovery.bySource.link} by crawling, ` +
+        `${discovery.bySource.bundle} found in JavaScript bundles and not linked from anywhere). ` +
+        `${estimate.unrunnable.length} selected ${estimate.unrunnable.length === 1 ? 'check' : 'checks'} ` +
+        `cannot run against this target. ` +
+        `This scan will cost ${credits} credits.` +
+        (discovery.completeness === 'truncated'
+          ? ' Discovery hit its budget, so the surface may be larger than this.'
+          : '');
 
   return {
     target,
     profile: resolved,
     discovery,
+    clustering,
     credits,
     estimatedRuntimeMs: estimate.totalRuntimeMs * surfaceUnits,
     willNotRun: estimate.unrunnable,
@@ -151,6 +172,9 @@ export async function execute(
       `${approved.discovery.bySource.bundle} routes were recovered from JavaScript bundles. ` +
         'Some may be templates or dead paths rather than live pages.',
     );
+  }
+  if (approved.clustering !== null) {
+    discoveryLimits.push(...samplingBlindSpots(approved.clustering));
   }
 
   let report: ScanReport = {
