@@ -120,13 +120,21 @@ export function resolveProfile(body: unknown): Resolved<ScanProfile> {
   }
 
   const inputsRaw = asRecord(profileRaw['inputs']) ?? {};
-  // Null-prototype object so a key like "__proto__" or "constructor" writes a
-  // plain own-property, never the prototype — and reject those keys outright.
+  // Guard against property injection: only accept keys that are plain, safe
+  // identifiers, and write into a null-prototype map. A key that is not a simple
+  // identifier (letters, digits, _, -) — including __proto__, constructor,
+  // prototype — is rejected, so a caller-supplied name can never reach the
+  // prototype chain or an unexpected property.
   const inputs: Record<string, string> = Object.create(null) as Record<string, string>;
+  const SAFE_KEY = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
   const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
   for (const [key, value] of Object.entries(inputsRaw)) {
-    if (FORBIDDEN_KEYS.has(key)) continue;
-    if (typeof value === 'string') inputs[key] = value;
+    if (!SAFE_KEY.test(key) || FORBIDDEN_KEYS.has(key)) continue;
+    if (typeof value === 'string') {
+      Object.defineProperty(inputs, key, {
+        value, writable: true, enumerable: true, configurable: true,
+      });
+    }
   }
 
   const first = moduleIds[0];
