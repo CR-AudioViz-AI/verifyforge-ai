@@ -120,8 +120,12 @@ export function resolveProfile(body: unknown): Resolved<ScanProfile> {
   }
 
   const inputsRaw = asRecord(profileRaw['inputs']) ?? {};
-  const inputs: Record<string, string> = {};
+  // Null-prototype object so a key like "__proto__" or "constructor" writes a
+  // plain own-property, never the prototype — and reject those keys outright.
+  const inputs: Record<string, string> = Object.create(null) as Record<string, string>;
+  const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
   for (const [key, value] of Object.entries(inputsRaw)) {
+    if (FORBIDDEN_KEYS.has(key)) continue;
     if (typeof value === 'string') inputs[key] = value;
   }
 

@@ -27,6 +27,7 @@
  */
 
 import type { Target } from '../modules/target';
+import { guardedFetch } from '@/lib/net/egress-guard';
 
 export interface DiscoveredRoute {
   readonly url: string;
@@ -211,8 +212,7 @@ export async function discover(
   async function get(url: string): Promise<string | null> {
     requestsIssued += 1;
     try {
-      const response = await fetch(url, {
-        redirect: 'follow',
+      const response = await guardedFetch(url, {
         headers: { 'User-Agent': USER_AGENT, Accept: '*/*' },
         ...(signal !== undefined ? { signal } : {}),
       });
