@@ -42,7 +42,6 @@
     "app/api/scan/**/*.ts",
     "ui/ScanComposer.tsx",
     "test/**/*.ts",
-    "test/_stubs/core-shims.d.ts",
     "lib/net/**/*.ts"
   ]
 }

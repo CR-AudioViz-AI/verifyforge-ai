@@ -4,11 +4,17 @@
  * Verify's credit operations, backed entirely by the platform credit ledger.
  *
  * This replaces the earlier placeholder that faked reserve/reconcile. There is
- * no separate ledger here: reserveAndCharge calls the shared guardCredits, which
- * checks balance, enforces daily limits and admin bypass, writes the debit, and
- * hands back a refund() closure. If the scan then fails, we call that closure
- * and the customer is made whole — the exact pattern the core system was built
- * around so nobody is charged for work that did not complete.
+ * no separate ledger here: reserveAndCharge calls guardCredits in lib/api/central,
+ * which reads the balance, writes the debit through this repo's credit
+ * primitives, and hands back a refund() closure. If the scan then fails, we call
+ * that closure and the customer is made whole, so nobody is charged for work that
+ * did not complete.
+ *
+ * NOTE ON SCOPE: guardCredits here enforces balance only. It does NOT implement
+ * daily limits or an admin bypass — lib/credits/index.ts has no such rules. An
+ * earlier revision of this comment claimed both, describing core's guardCredits
+ * rather than the one actually called. If either rule is wanted, it is a change
+ * to lib/credits, not a special case here.
  *
  * Verify's price is dynamic, so it always passes override_cost. The credit floor
  * (1 credit = $0.01) is enforced by the engine's registry at module registration,
@@ -29,8 +35,7 @@ export interface ChargeResult {
 
 /**
  * Checks and charges in one call. On success, `refund` reverses exactly this
- * charge if the scan fails. Admins pass through uncharged, handled inside
- * guardCredits — Verify does not special-case them.
+ * charge if the scan fails.
  */
 export async function reserveAndCharge(
   userId: string,

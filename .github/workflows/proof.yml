@@ -30,11 +30,21 @@ jobs:
         run: npx tsc --noEmit -p tsconfig.engine.json
 
       - name: Prove — offline claims
-        # These need no network: lifecycle, credential deletion, SARIF interop.
+        # No HTTP requests: lifecycle, credential deletion, SARIF interop,
+        # business-logic solver, and the egress guard.
+        #
+        # proof.egress is security code and must gate this workflow — the guard is
+        # the only thing standing between a user-supplied URL and the metadata
+        # endpoint, so a regression in it cannot be allowed to pass silently.
+        # It issues no HTTP requests, but guardUrl() resolves DNS (example.com and
+        # localhost.localtest.me), so this step needs name resolution even though
+        # it needs no reachable site. That is why it is here and not in live claims.
         run: |
           npx tsx test/proof.lifecycle.ts
           npx tsx test/proof.credentials.ts
           npx tsx test/proof.sarif.ts
+          npx tsx test/proof.solver.ts
+          npx tsx test/proof.egress.ts
 
       - name: Prove — live claims
         # These hit real sites (example.com, docs.claude.com). Allowed to be flaky

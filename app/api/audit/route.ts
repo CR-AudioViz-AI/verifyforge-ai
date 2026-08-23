@@ -22,6 +22,7 @@
 // CR AudioViz AI, LLC · EIN 39-3646201 · August 2026
 import { NextRequest, NextResponse } from 'next/server'
 import { crawl, draftManifest } from '@/lib/engine/crawler'
+import { guardedFetch } from '@/lib/net/egress-guard'
 import { assistancePolicy, offersFor, settle, usd } from '@/lib/engine/billing'
 import { ARTIFACT_MANIFEST_VERSION, grade, validate } from '@/lib/manifest/artifact'
 import type { ArtifactKind, Finding, Manifest } from '@/lib/manifest/artifact'
@@ -40,7 +41,7 @@ const MANIFEST_PATHS = [
 async function findManifest(origin: string): Promise<{ manifest?: Manifest; foundAt?: string }> {
   for (const p of MANIFEST_PATHS) {
     try {
-      const r = await fetch(origin + p, { signal: AbortSignal.timeout(8000) })
+      const r = await guardedFetch(origin + p, { signal: AbortSignal.timeout(8000) })
       if (!r.ok) continue
       const j = (await r.json()) as Manifest
       if (j && typeof j === 'object' && 'version' in j) return { manifest: j, foundAt: p }
