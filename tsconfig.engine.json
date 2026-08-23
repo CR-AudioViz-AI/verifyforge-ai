@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": { "@/*": ["./*"] }
+  },
+  "include": [
+    "lib/modules/**/*.ts",
+    "lib/engine/discover.ts", "lib/engine/scan.ts", "lib/engine/session.ts",
+    "lib/engine/history.ts", "lib/engine/personas.ts", "lib/engine/templates.ts",
+    "lib/engine/logic-solver.ts",
+    "lib/export/**/*.ts", "lib/store/supabase-history.ts", "lib/store/history-instance.ts",
+    "lib/api/central.ts", "lib/api/credits.ts", "lib/api/resolve.ts",
+    "lib/registry-instance.ts",
+    "app/api/scan/**/*.ts",
+    "ui/ScanComposer.tsx",
+    "test/**/*.ts",
+    "test/_stubs/core-shims.d.ts"
+  ]
+}

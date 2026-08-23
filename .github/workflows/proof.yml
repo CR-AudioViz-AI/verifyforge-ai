@@ -27,7 +27,7 @@ jobs:
       - name: Typecheck (strict)
         # The engine compiles clean under strict + noUncheckedIndexedAccess +
         # exactOptionalPropertyTypes. This fails the build if that ever regresses.
-        run: npx tsc --noEmit
+        run: npx tsc --noEmit -p tsconfig.engine.json
 
       - name: Prove — offline claims
         # These need no network: lifecycle, credential deletion, SARIF interop.

@@ -21,7 +21,7 @@ async function main() {
   reg.register(redirectIntegrityModule);
   reg.register(idorAccessModule);
   const anon = new Session({ kind: 'anonymous' }, null);
-  const t = (over: Partial<Target>): Target => ({
+  const t = (over: Partial<Target> = {}): Target => ({
     id: 'tgt', kind: 'web_property', label: 'T', address: 'https://example.com/',
     accessTier: 'public', authorization: { kind: 'owned', note: 't' },
     rateLimitRps: 5, respectRobotsTxt: true, ...over,
