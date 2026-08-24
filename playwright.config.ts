@@ -21,6 +21,17 @@ export default defineConfig({
     ['list'],
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
   ],
+
+  // Start the app before the tests run. Without this, every page.goto('/') hit a
+  // dead localhost:3000 and the suite failed at connection, not on a real
+  // compliance issue. reuseExistingServer lets a local dev server be used when
+  // present; CI always starts its own.
+  webServer: {
+    command: 'npm run build && npm run start',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
+  },
   
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3000',

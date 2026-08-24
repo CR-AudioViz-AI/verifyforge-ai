@@ -6,36 +6,39 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "next": "14.2.35",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "@supabase/supabase-js": "^2.39.0",
     "@supabase/ssr": "^0.9.0",
-    "openai": "^4.67.3",
-    "pdf-lib": "^1.17.1",
+    "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.5",
     "cheerio": "^1.0.0-rc.12",
-    "lucide-react": "^0.577.0",
+    "docx": "^8.5.0",
     "framer-motion": "^11.0.0",
+    "jspdf": "^2.5.1",
+    "lucide-react": "^0.577.0",
+    "next": "14.2.35",
+    "openai": "^4.67.3",
+    "pdf-lib": "^1.17.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "recharts": "^2.8.0",
     "sharp": "^0.34.5",
-    "jspdf": "^2.5.1",
     "tesseract.js": "^5.0.5",
-    "docx": "^8.5.0",
+    "tsx": "^4.23.12",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "20.11.5",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
-    "typescript": "^5.3.3",
-    "tailwindcss": "^3.4.0",
-    "postcss": "^8.4.32",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
-    "eslint-config-next": "14.2.5"
+    "eslint-config-next": "14.2.5",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.3",
+    "@playwright/test": "1.48.0"
   }
 }

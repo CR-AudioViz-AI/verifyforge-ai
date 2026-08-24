@@ -1,4 +1,10 @@
 import { test, expect } from '@playwright/test';
+import {
+  FORBIDDEN_FAMILIES,
+  findForbiddenHexLiterals,
+  forbiddenEntryCount,
+  resolveForbidden,
+} from './support/tailwind-palette';
 
 /**
  * Henderson Standards Compliance Tests
@@ -57,23 +63,92 @@ test.describe('Henderson Standards Compliance', () => {
   });
   
   test.describe('Brand Color Compliance', () => {
-    const FORBIDDEN_COLORS = [
-      'purple', 'violet', 'emerald', 'amber', 
-      'pink', 'rose', 'indigo', 'fuchsia'
-    ];
-    
+    // A forbidden colour can reach the page in three representations, and the
+    // check has to cover all three. It used to cover only the first, so
+    // app/page.tsx shipped `style={{ color: '#10b981' }}` — emerald-500 — past a
+    // green forbidden-colour test. Class name, hex literal, computed value.
+
     test('should not use forbidden colors in CSS classes', async ({ page }) => {
       await page.goto('/');
       
       const html = await page.content();
       
-      for (const color of FORBIDDEN_COLORS) {
+      for (const color of FORBIDDEN_FAMILIES) {
         // Check for Tailwind classes with forbidden colors
         const hasColor = html.includes(`bg-${color}`) || 
                          html.includes(`text-${color}`) || 
                          html.includes(`border-${color}`);
         expect(hasColor, `Found forbidden color: ${color}`).toBe(false);
       }
+    });
+
+    test('should not use forbidden colors as hex literals', async ({ page }) => {
+      await page.goto('/');
+
+      const found = findForbiddenHexLiterals(await page.content());
+      const report = found
+        .map((f) => `${f.hex} is ${f.family}-${f.shade}`)
+        .join(', ');
+
+      expect(
+        found,
+        `Forbidden colours present as hex literals (inline styles or <style> blocks): ${report}`,
+      ).toEqual([]);
+    });
+
+    test('should not render forbidden colors in computed styles', async ({ page }) => {
+      await page.goto('/');
+
+      // Collected in the browser as rgb() strings, resolved back to palette
+      // entries here. This catches a banned colour arriving from a stylesheet or
+      // a CSS variable, where no hex literal appears in the markup at all.
+      const used = await page.$$eval('*', (elements) =>
+        elements.flatMap((el) => {
+          const style = window.getComputedStyle(el);
+          const tag = el.tagName.toLowerCase();
+          const id = el.id ? `#${el.id}` : '';
+          return (['color', 'backgroundColor', 'borderTopColor', 'outlineColor'] as const).map(
+            (prop) => ({ where: `${tag}${id}`, prop, value: style[prop] }),
+          );
+        }),
+      );
+
+      const offenders = used
+        .map((u) => ({ ...u, match: resolveForbidden(u.value) }))
+        .filter((u) => u.match !== null)
+        .map((u) => `${u.where} ${u.prop}=${u.value} is ${u.match?.family}-${u.match?.shade}`);
+
+      expect(
+        [...new Set(offenders)],
+        'Forbidden colours present in computed styles',
+      ).toEqual([]);
+    });
+
+    test('the palette resolver actually catches #10b981 (emerald-500)', () => {
+      // Proves the mechanism itself, with no page involved. If this ever passes
+      // vacuously — an empty palette index, a renamed dependency export — the
+      // two tests above would go quietly green while enforcing nothing.
+      expect(forbiddenEntryCount()).toBeGreaterThan(50);
+
+      expect(resolveForbidden('#10b981')).toEqual({
+        hex: '#10b981',
+        family: 'emerald',
+        shade: '500',
+      });
+      // Case and shorthand are normalised, alpha is ignored, and the computed
+      // rgb() form resolves to the same entry.
+      expect(resolveForbidden('#10B981')?.family).toBe('emerald');
+      expect(resolveForbidden('#10b981ff')?.family).toBe('emerald');
+      expect(resolveForbidden('rgb(16, 185, 129)')?.family).toBe('emerald');
+
+      // The approved brand colours must NOT be flagged.
+      expect(resolveForbidden('#0891b2')).toBeNull();   // cyan-600
+      expect(resolveForbidden('#e2e8f0')).toBeNull();   // slate-200
+      expect(resolveForbidden('rgba(0, 0, 0, 0)')).toBeNull();
+
+      expect(findForbiddenHexLiterals('<div style="color:#10B981">x</div>')).toEqual([
+        { hex: '#10b981', family: 'emerald', shade: '500' },
+      ]);
     });
     
     test('should use approved brand colors', async ({ page }) => {

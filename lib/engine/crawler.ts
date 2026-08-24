@@ -22,6 +22,8 @@
 //
 // CR AudioViz AI, LLC · EIN 39-3646201 · August 2026
 
+import { guardedFetch } from '@/lib/net/egress-guard'
+
 export interface Route {
   url: string
   status: number
@@ -168,10 +170,9 @@ export async function crawl(seed: string, opts: CrawlOptions = {}): Promise<Craw
   const get = async (url: string) => {
     const started = Date.now()
     try {
-      const r = await fetch(url, {
+      const r = await guardedFetch(url, {
         headers: { 'User-Agent': 'VerifyForge/1.0 (+https://verifyforgeai.com)' },
         signal: AbortSignal.timeout(timeout),
-        redirect: 'follow',
       })
       const ct = r.headers.get('content-type') ?? ''
       const body = ct.includes('image') || ct.includes('font') ? '' : await r.text()
