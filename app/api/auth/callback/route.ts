@@ -1,22 +1,23 @@
-import { createClient } from '@supabase/supabase-js';
+// app/api/auth/callback/route.ts — hand the OAuth code to the client.
+//
+// This route used to call exchangeCodeForSession() itself, on a client built
+// with plain createClient() and no cookie adapter. The session it produced lived
+// in an in-memory server-side client that was discarded when the request ended,
+// and the caller was redirected as though signed in. OAuth never worked and
+// nothing reported that it had not.
+//
+// The exchange now happens on the persisting browser client at
+// /auth/callback, so there is one session store rather than two. This route
+// survives only so that any redirect URL already configured with the provider
+// keeps working: it forwards the query string and does nothing else.
+//
+// CR AudioViz AI, LLC · EIN 39-3646201 · 2026-08-24
+
 import { NextRequest, NextResponse } from 'next/server';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kteobfyferrukqeolofj.supabase.co';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0ZW9iZnlmZXJydWtxZW9sb2ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIxOTcyNjYsImV4cCI6MjA3NzU1NzI2Nn0.uy-jlF_z6qVb8qogsNyGDLHqT4HhmdRhLrW7zPv3qhY';
-
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get('code');
-  const redirectTo = requestUrl.searchParams.get('redirect_to') || '/';
-
-  if (code) {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) {
-      console.error('Auth callback error:', error);
-      return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(error.message)}`, requestUrl.origin));
-    }
-  }
-
-  return NextResponse.redirect(new URL(redirectTo, requestUrl.origin));
+  const target = new URL('/auth/callback', requestUrl.origin);
+  requestUrl.searchParams.forEach((value, key) => target.searchParams.set(key, value));
+  return NextResponse.redirect(target);
 }
