@@ -158,7 +158,8 @@ interface EnhancedSecurityAnalysis {
     warningLevel: 'none' | '90-days' | '60-days' | '30-days' | 'expired';
   };
   hasHSTS: boolean;
-  hstsMaxAge?: number;
+  /** Absent when the response carries no HSTS header, or no max-age in it. */
+  hstsMaxAge?: number | undefined;
   hasCSP: boolean;
   cspDirectives: string[];
   hasCORS: boolean;
@@ -440,7 +441,10 @@ interface ComprehensiveWebTestResult {
 // ============================================================================
 
 export class CompleteWebTester {
-  private progressCallback?: (progress: TestProgress) => void;
+  // The field is optional AND its value may be undefined: the constructor
+  // parameter is optional, so `undefined` is assigned, not omitted. Under
+  // exactOptionalPropertyTypes those are different types.
+  private progressCallback?: ((progress: TestProgress) => void) | undefined;
 
   constructor(progressCallback?: (progress: TestProgress) => void) {
     this.progressCallback = progressCallback;
@@ -1278,8 +1282,8 @@ export class CompleteWebTester {
       const name = $(el).attr('name') || '';
       metaTags[name] = (metaTags[name] || 0) + 1;
     });
-    Object.keys(metaTags).forEach(name => {
-      if (metaTags[name] > 1) duplicateMetaTags.push(name);
+    Object.entries(metaTags).forEach(([name, count]) => {
+      if (count > 1) duplicateMetaTags.push(name);
     });
 
     // Keyword density (top 5 keywords)

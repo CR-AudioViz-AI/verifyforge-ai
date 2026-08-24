@@ -16,7 +16,11 @@ export function ThemeToggle() {
     const themes: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
     const currentIndex = themes.indexOf(theme);
     const nextIndex = (currentIndex + 1) % themes.length;
-    setTheme(themes[nextIndex]);
+    const next = themes[nextIndex];
+    // Provably in range, but the compiler cannot see that. Guarding beats a
+    // non-null assertion: if the array is ever emptied, this does nothing
+    // rather than setting the theme to undefined.
+    if (next !== undefined) setTheme(next);
   };
 
   return (

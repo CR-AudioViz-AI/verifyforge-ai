@@ -28,7 +28,8 @@ export interface Route {
   url: string
   status: number
   contentType: string
-  title?: string
+  /** Absent when the page has no <title>. */
+  title?: string | undefined
   bytes: number
   ms: number
   /** How it was found — a link, a sitemap, a guess, a JS bundle string. */
@@ -41,7 +42,8 @@ export interface Endpoint {
   methods: string[]
   status: number
   /** Did it return JSON, and what did the top-level shape look like? */
-  shape?: string
+  /** Absent when the JSON body did not parse. */
+  shape?: string | undefined
   /** Does it respond identically without credentials? */
   unauthenticated?: boolean
   via: string
@@ -64,7 +66,7 @@ export interface CrawlResult {
   /** Anything that looks like it should not be public. */
   exposures: { url: string; why: string; severity: 'blocker' | 'major' | 'minor' }[]
   assets: { js: number; css: number; images: number; totalBytes: number }
-  robots: { found: boolean; sitemap?: string; disallowed: string[] }
+  robots: { found: boolean; sitemap?: string | undefined; disallowed: string[] }
   durationMs: number
 }
 
@@ -116,6 +118,7 @@ export function routesFromBundle(js: string, origin: string): string[] {
   // Next.js route manifests and plain string literals both leak paths.
   for (const m of js.matchAll(/["'`](\/(?!\/)[a-z0-9\-_/[\]]{2,60})["'`]/gi)) {
     const p = m[1]
+    if (p === undefined) continue
     if (/\.(js|css|png|jpg|svg|webp|woff2?|ico|map)$/i.test(p)) continue
     if (p.startsWith('/_next/')) continue
     if (p.includes('[')) continue          // dynamic routes need data
@@ -187,10 +190,10 @@ export async function crawl(seed: string, opts: CrawlOptions = {}): Promise<Craw
   if (rb.status === 200) {
     robots.found = true
     for (const line of rb.body.split('\n')) {
-      const s = line.match(/^\s*Sitemap:\s*(\S+)/i)
-      if (s) robots.sitemap = s[1]
-      const d = line.match(/^\s*Disallow:\s*(\S+)/i)
-      if (d && d[1] !== '/') robots.disallowed.push(d[1])
+      const sitemapUrl = line.match(/^\s*Sitemap:\s*(\S+)/i)?.[1]
+      if (sitemapUrl !== undefined) robots.sitemap = sitemapUrl
+      const disallowPath = line.match(/^\s*Disallow:\s*(\S+)/i)?.[1]
+      if (disallowPath !== undefined && disallowPath !== '/') robots.disallowed.push(disallowPath)
     }
   }
   const allowed = (u: string) => {
@@ -206,7 +209,10 @@ export async function crawl(seed: string, opts: CrawlOptions = {}): Promise<Craw
     const sm = await get(robots.sitemap)
     if (sm.status === 200) {
       for (const m of sm.body.matchAll(/<loc>([^<]+)<\/loc>/g)) {
-        if (m[1].startsWith(origin)) queue.push({ url: m[1], via: 'sitemap', depth: 1 })
+        const loc = m[1]
+        if (loc !== undefined && loc.startsWith(origin)) {
+          queue.push({ url: loc, via: 'sitemap', depth: 1 })
+        }
       }
     }
   }
@@ -259,11 +265,14 @@ export async function crawl(seed: string, opts: CrawlOptions = {}): Promise<Craw
       // Links
       for (const m of r.body.matchAll(/href=["']([^"'#]+)["']/gi)) {
         let href = m[1]
+        if (href === undefined) continue
         if (href.startsWith('//') || /^(mailto|tel|javascript):/i.test(href)) continue
         if (href.startsWith('/')) href = origin + href
         else if (!href.startsWith('http')) continue
         if (!href.startsWith(origin)) continue
-        queue.push({ url: href.split('#')[0], via: 'link', depth: b.depth + 1 })
+        // replace() rather than split('#')[0]: it returns a string rather than
+        // string | undefined, and says "drop the fragment" more directly.
+        queue.push({ url: href.replace(/#.*$/, ''), via: 'link', depth: b.depth + 1 })
       }
 
       // Forms — recorded, never submitted blind.
@@ -272,7 +281,8 @@ export async function crawl(seed: string, opts: CrawlOptions = {}): Promise<Craw
         const action = tag.match(/action=["']([^"']+)["']/i)?.[1] ?? b.url
         const method = (tag.match(/method=["']([^"']+)["']/i)?.[1] ?? 'GET').toUpperCase()
         const fields: FormTarget['fields'] = []
-        for (const inp of fm[1].matchAll(/<(input|select|textarea)[^>]*>/gi)) {
+        const formBody = fm[1] ?? ''
+        for (const inp of formBody.matchAll(/<(input|select|textarea)[^>]*>/gi)) {
           const name = inp[0].match(/name=["']([^"']+)["']/i)?.[1]
           if (!name) continue
           fields.push({
@@ -286,7 +296,10 @@ export async function crawl(seed: string, opts: CrawlOptions = {}): Promise<Craw
 
       // Bundles leak routes no link points at.
       const bundles = [...r.body.matchAll(/src=["']([^"']*\/_next\/static\/[^"']+\.js)["']/gi)]
-        .map(m => m[1].startsWith('http') ? m[1] : origin + m[1]).slice(0, 4)
+        .map(m => m[1])
+        .filter((src): src is string => src !== undefined)
+        .map(src => (src.startsWith('http') ? src : origin + src))
+        .slice(0, 4)
       for (const bu of bundles) {
         const js = await get(bu)
         if (js.status !== 200) continue

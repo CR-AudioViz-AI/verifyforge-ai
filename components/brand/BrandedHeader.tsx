@@ -25,9 +25,11 @@ interface BrandedHeaderProps {
  */
 export function BrandedHeader({ appName, appLogo, quickLinks = [] }: BrandedHeaderProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<{ name?: string; email?: string } | null>(null);
+  // `name` is genuinely optional on User; `email` is not. Modelling that exactly
+  // keeps exactOptionalPropertyTypes honest at the call sites below.
+  const [user, setUser] = useState<{ name: string | undefined; email: string } | null>(null);
   const [credits, setCredits] = useState(0);
-  const [plan, setPlan] = useState<'free' | 'pro' | 'business'>('free');
+  const [plan, setPlan] = useState<'free' | 'pro' | 'business' | 'enterprise'>('free');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -38,17 +40,20 @@ export function BrandedHeader({ appName, appLogo, quickLinks = [] }: BrandedHead
     try {
       const session = await CentralServices.Auth.getSession();
       if (session.success && session.data) {
+        const currentUser = session.data;
         setIsLoggedIn(true);
-        setUser({
-          name: session.data.user.user_metadata?.full_name,
-          email: session.data.user.email,
-        });
-        
+        setUser({ name: currentUser.name, email: currentUser.email });
+
+        // The plan comes from the session's subscription_tier, which is typed as
+        // the four-value union. getBalance() also reports a `tier`, but as a bare
+        // string — using it would need a cast or a fallback to a plausible
+        // default, and a wrong plan renders the wrong price to a paying customer.
+        setPlan(currentUser.subscription_tier);
+
         // Fetch credits
         const creditsResult = await CentralServices.Credits.getBalance();
         if (creditsResult.success) {
-          setCredits(creditsResult.data?.balance || 0);
-          setPlan(creditsResult.data?.plan || 'free');
+          setCredits(creditsResult.data?.balance ?? 0);
         }
       }
     } catch (error) {
@@ -70,7 +75,7 @@ export function BrandedHeader({ appName, appLogo, quickLinks = [] }: BrandedHead
         isLoggedIn={isLoggedIn} 
         credits={credits} 
         plan={plan}
-        userName={user?.name}
+        {...(user?.name !== undefined ? { userName: user.name } : {})}
       />
       
       {/* Main Header */}
@@ -125,8 +130,8 @@ export function BrandedHeader({ appName, appLogo, quickLinks = [] }: BrandedHead
               {/* Auth Buttons */}
               <AuthButtons 
                 isLoggedIn={isLoggedIn}
-                userName={user?.name}
-                userEmail={user?.email}
+                {...(user?.name !== undefined ? { userName: user.name } : {})}
+                {...(user?.email !== undefined ? { userEmail: user.email } : {})}
                 onLogout={handleLogout}
               />
               

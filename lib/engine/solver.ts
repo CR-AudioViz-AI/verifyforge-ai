@@ -30,7 +30,8 @@ import type { Check, Manifest, Step } from '../manifest/artifact'
 
 export interface StepResult {
   index: number
-  note?: string
+  /** Carried through from the Step, which may not have one. */
+  note?: string | undefined
   ok: boolean
   detail: string
   ms: number
@@ -188,15 +189,15 @@ export async function solveGuided(m: Manifest, d: Driver): Promise<SolveResult> 
   const failures: string[] = []
 
   await d.goto(m.url)
-  for (let i = 0; i < m.walkthrough.length; i++) {
-    const r = await runStep(m.walkthrough[i], d, i)
+  for (const [i, step] of m.walkthrough.entries()) {
+    const r = await runStep(step, d, i)
     steps.push(r)
-    if (m.walkthrough[i].action.type === 'assert') {
+    if (step.action.type === 'assert') {
       if (r.ok) passed++
       else { failed++; failures.push(`step ${i}${r.note ? ` (${r.note})` : ''}: ${r.detail}`) }
     }
     // A failed navigation or click makes every later step meaningless.
-    if (!r.ok && ['goto', 'click'].includes(m.walkthrough[i].action.type)) break
+    if (!r.ok && ['goto', 'click'].includes(step.action.type)) break
   }
 
   // Every declared capability, checked.

@@ -80,7 +80,10 @@ interface EnhancedAITestResult {
 }
 
 export class CompleteAiBotTester {
-  private progressCallback?: (progress: TestProgress) => void;
+  // The field is optional AND its value may be undefined: the constructor
+  // parameter is optional, so `undefined` is assigned, not omitted. Under
+  // exactOptionalPropertyTypes those are different types.
+  private progressCallback?: ((progress: TestProgress) => void) | undefined;
   private apiEndpoint: string;
   private timeout: number = 30000;
 

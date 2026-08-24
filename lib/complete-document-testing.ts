@@ -28,7 +28,8 @@ interface EnhancedDocumentTestResult {
     fileType: string;
     mimeType: string;
     pages: number;
-    fileVersion?: string;
+    /** Not every format declares a version. */
+    fileVersion?: string | undefined;
   };
   contentAnalysis: {
     hasText: boolean;
@@ -59,7 +60,8 @@ interface EnhancedDocumentTestResult {
   };
   securityAnalysis: {
     encrypted: boolean;
-    encryptionLevel?: string;
+    /** Absent when the document is not encrypted. */
+    encryptionLevel?: string | undefined;
     passwordProtected: boolean;
     digitalSignature: boolean;
     signatureValid: boolean;
@@ -110,7 +112,8 @@ interface EnhancedDocumentTestResult {
     compressionRatio: number;
     canBeOptimized: boolean;
     potentialSavings: number;
-    recommendedFormat?: string;
+    /** Absent when no better format applies. */
+    recommendedFormat?: string | undefined;
     imageOptimization: {
       uncompressedImages: number;
       oversizedImages: number;
@@ -135,7 +138,10 @@ interface EnhancedDocumentTestResult {
 }
 
 export class CompleteDocumentTester {
-  private progressCallback?: (progress: TestProgress) => void;
+  // The field is optional AND its value may be undefined: the constructor
+  // parameter is optional, so `undefined` is assigned, not omitted. Under
+  // exactOptionalPropertyTypes those are different types.
+  private progressCallback?: ((progress: TestProgress) => void) | undefined;
 
   constructor(progressCallback?: (progress: TestProgress) => void) {
     this.progressCallback = progressCallback;

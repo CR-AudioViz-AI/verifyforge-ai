@@ -23,8 +23,11 @@ interface WhiteLabelConfig {
   organizationId: string;
   branding: {
     companyName: string;
-    logoUrl?: string;
-    logoBase64?: string;
+    // `| undefined` is load-bearing: deleteLogo() clears a logo by assigning
+    // undefined, and under exactOptionalPropertyTypes an optional property that
+    // cannot hold undefined can only be omitted, never cleared.
+    logoUrl?: string | undefined;
+    logoBase64?: string | undefined;
     primaryColor: string;
     secondaryColor: string;
     accentColor: string;
@@ -76,7 +79,9 @@ interface CustomTheme {
   secondaryColor: string;
   accentColor: string;
   fontFamily: string;
-  logoUrl?: string;
+  // A config with no logo yields a theme with no logo; the value is carried
+  // through as undefined rather than the key being dropped.
+  logoUrl?: string | undefined;
 }
 
 // ============================================================================

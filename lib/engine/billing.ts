@@ -101,7 +101,8 @@ export function offersFor(kind: ArtifactKind): Product[] {
 export function assistancePolicy(input: {
   blindFound: boolean
   hasDiscoveryTell: boolean
-  observedFindRate?: number
+  /** Absent when no unguided run has measured it yet. */
+  observedFindRate?: number | undefined
 }): { sellable: boolean; maxTier: 1 | 2 | 3; reason: string } {
   if (!input.hasDiscoveryTell) {
     return { sellable: false, maxTier: 1, reason:

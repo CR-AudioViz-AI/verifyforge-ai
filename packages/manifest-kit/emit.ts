@@ -114,13 +114,13 @@ export function emitManifest(o: EmitOptions): Manifest {
       { role: 'Founder and direction', name: 'Roy Henderson' },
       { role: 'Studio', name: STUDIO },
     ],
-    controls: o.controls,
+    ...(o.controls !== undefined ? { controls: o.controls } : {}),
     capabilities,
     hiddenPaths: o.hiddenPaths ?? [],
     walkthrough,
     surfaces: o.surfaces ?? [],
     claims: o.claims ?? {},
-    contract: o.contract,
+    ...(o.contract !== undefined ? { contract: o.contract } : {}),
   }
 }
 

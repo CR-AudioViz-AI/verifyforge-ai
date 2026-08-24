@@ -185,7 +185,7 @@ export default function Analytics() {
     // Group by date
     const dateMap = new Map<string, any[]>();
     results.forEach(result => {
-      const date = new Date(result.created_at).toISOString().split('T')[0];
+      const date = new Date(result.created_at).toISOString().slice(0, 10);
       if (!dateMap.has(date)) {
         dateMap.set(date, []);
       }
