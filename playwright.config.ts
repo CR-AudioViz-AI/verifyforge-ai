@@ -20,6 +20,10 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    // Fails the run when a configured project executed nothing. A browser that
+    // will not launch reports one failure per test, which reads as defects in
+    // the app rather than as a project that ran zero assertions. See #59.
+    ['./e2e/support/project-coverage-reporter.ts'],
   ],
 
   // Start the app before the tests run. Without this, every page.goto('/') hit a

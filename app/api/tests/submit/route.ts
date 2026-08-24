@@ -216,6 +216,22 @@ export async function POST(req: NextRequest) {
 // GET endpoint for progress and credits
 export async function GET(req: NextRequest) {
   try {
+    // The GET side is gated too. It was not, until writing the auth e2e made the
+    // asymmetry obvious: ?action=progress returns the progress of a test by id,
+    // and an id is guessable enough that leaving it open hands out other
+    // people's run state to anyone who asks. The client already sends the token
+    // here — authedFetch is used for both calls — so nothing legitimate breaks.
+    const caller = await getUserFromRequest(req);
+    if (caller === null) {
+      return NextResponse.json(
+        {
+          error: 'Sign in required',
+          message: 'This endpoint reports on work owned by an account and must know who is asking.',
+        },
+        { status: 401 },
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
 
