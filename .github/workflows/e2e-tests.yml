@@ -29,7 +29,12 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.48.0-jammy
+      # MUST match the @playwright/test version pinned in package.json exactly.
+      # The image ships the browser builds that version of the library expects;
+      # when they diverge, Playwright cannot find the executables and every
+      # project using a browser the image lacks fails to LAUNCH — which reads as
+      # a wall of test failures rather than as a version problem.
+      image: mcr.microsoft.com/playwright:v1.62.1-jammy
 
     steps:
       - uses: actions/checkout@v7
