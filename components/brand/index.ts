@@ -18,5 +18,9 @@ export { BrandedFooter } from './BrandedFooter';
 export { CreditsBar } from './CreditsBar';
 export { AuthButtons } from './AuthButtons';
 
-// Tailwind config extension
-export { brandConfig as tailwindBrandConfig } from './tailwind.brand.config';
+// 2026-08-23: `export { brandConfig as tailwindBrandConfig } from
+// './tailwind.brand.config'` was removed. That module does not exist in this
+// repository and nothing imports the symbol, so the line was a re-export of
+// nothing that broke the type check. components/brand/ is copied across repos —
+// if the file exists elsewhere, this is a divergence to reconcile upstream
+// rather than a file to invent here.

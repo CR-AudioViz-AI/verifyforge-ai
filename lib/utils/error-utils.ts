@@ -80,7 +80,10 @@ export function getErrorMessage(error: unknown): string {
  */
 export function getErrorDetails(error: unknown): {
   message: string;
-  stack?: string;
+  // `?: T | undefined` rather than `?: T`: under exactOptionalPropertyTypes the
+  // two differ, and Error.stack is genuinely present-and-undefined on some
+  // engines. The property is optional AND its value may be undefined.
+  stack?: string | undefined;
   details?: unknown;
 } {
   const message = getErrorMessage(error);
@@ -105,7 +108,8 @@ export function getErrorDetails(error: unknown): {
 export function formatApiError(error: unknown): {
   error: string;
   message: string;
-  details?: string;
+  // A Supabase error carries `details` or `hint`, and may carry neither.
+  details?: string | undefined;
 } {
   const message = getErrorMessage(error);
   

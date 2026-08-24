@@ -50,10 +50,11 @@ export interface GateDecision {
 /** Is this audit included in work already paid for, or is it billable? */
 export function decideBilling(origin: Origin, opts: {
   /** Did anything material change since the last certificate? */
-  materialChange?: boolean
-  /** Hours since the last passing certificate for this artifact. */
-  hoursSinceCertificate?: number
-  auditCredits?: number
+  materialChange?: boolean | undefined
+  /** Hours since the last passing certificate for this artifact. Absent when
+   *  the caller has no certificate history — read below as `?? Infinity`. */
+  hoursSinceCertificate?: number | undefined
+  auditCredits?: number | undefined
 } = {}): GateDecision {
   const credits = opts.auditCredits ?? 2900
 

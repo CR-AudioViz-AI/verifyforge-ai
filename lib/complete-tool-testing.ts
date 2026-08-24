@@ -159,7 +159,10 @@ interface EnhancedToolTestResult {
 }
 
 export class CompleteToolTester {
-  private progressCallback?: (progress: TestProgress) => void;
+  // The field is optional AND its value may be undefined: the constructor
+  // parameter is optional, so `undefined` is assigned, not omitted. Under
+  // exactOptionalPropertyTypes those are different types.
+  private progressCallback?: ((progress: TestProgress) => void) | undefined;
   private toolUrl: string = '';
 
   constructor(progressCallback?: (progress: TestProgress) => void) {

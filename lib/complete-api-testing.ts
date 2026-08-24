@@ -66,9 +66,10 @@ interface SecurityAnalysis {
   securityScore: number;
   rateLimiting: {
     detected: boolean;
-    limit?: number;
-    remaining?: number;
-    resetTime?: string;
+    // Absent when the API sends no rate-limit headers, which is the common case.
+    limit?: number | undefined;
+    remaining?: number | undefined;
+    resetTime?: string | undefined;
   };
 }
 
@@ -176,8 +177,24 @@ interface ComprehensiveAPITestResult {
 // MAIN API TESTING CLASS
 // ============================================================================
 
+/**
+ * Axios types a response header as `string | number | true | string[] |
+ * AxiosHeaders`. Every read in this file wants the textual form, and `|| ''`
+ * does not narrow the union — it only removes the falsy members, leaving
+ * `.includes()` called on something that may be a number or an AxiosHeaders.
+ */
+function headerText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.join(', ');
+  return '';
+}
+
 export class CompleteApiTester {
-  private progressCallback?: (progress: TestProgress) => void;
+  // The field is optional AND its value may be undefined: the constructor
+  // parameter is optional, so `undefined` is assigned, not omitted. Under
+  // exactOptionalPropertyTypes those are different types.
+  private progressCallback?: ((progress: TestProgress) => void) | undefined;
 
   constructor(progressCallback?: (progress: TestProgress) => void) {
     this.progressCallback = progressCallback;
@@ -235,9 +252,20 @@ export class CompleteApiTester {
       const avgResponseTime = performanceResults.reduce((a, b) => a + b, 0) / performanceResults.length;
       performanceResults.sort((a, b) => a - b);
       
-      const p50 = performanceResults[Math.floor(testRuns * 0.5)];
-      const p95 = performanceResults[Math.floor(testRuns * 0.95)];
-      const p99 = performanceResults[Math.floor(testRuns * 0.99)];
+      // noUncheckedIndexedAccess: indexing a possibly-empty array yields
+      // `number | undefined`. The sample is non-empty whenever testRuns > 0.
+      // If it somehow is not, no percentile exists — and defaulting to 0ms
+      // would report a perfect latency score for a test that never ran.
+      const percentileAt = (index: number): number => {
+        const value = performanceResults[index];
+        if (value === undefined) {
+          throw new Error('No performance samples were collected.');
+        }
+        return value;
+      };
+      const p50 = percentileAt(Math.floor(testRuns * 0.5));
+      const p95 = percentileAt(Math.floor(testRuns * 0.95));
+      const p99 = percentileAt(Math.floor(testRuns * 0.99));
 
       if (p95 > 2000) {
         issues.push({
@@ -388,7 +416,7 @@ export class CompleteApiTester {
       }
 
       // Content-Type check
-      const contentType = response.headers['content-type'] || '';
+      const contentType = headerText(response.headers['content-type']);
       if (!contentType.includes('application/json')) {
         issues.push({
           severity: 'medium',
@@ -441,7 +469,7 @@ export class CompleteApiTester {
       // ====================================================================
       this.updateProgress('response', 70, 'Analyzing response...');
 
-      const contentLength = parseInt(response.headers['content-length'] || '0');
+      const contentLength = parseInt((headerText(response.headers['content-length']) || '0'));
       const compression = !!response.headers['content-encoding'];
 
       if (!compression && contentLength > 1024) {
@@ -457,7 +485,7 @@ export class CompleteApiTester {
       }
 
       // Caching analysis
-      const cacheControl = response.headers['cache-control'] || '';
+      const cacheControl = headerText(response.headers['cache-control']);
       const etag = !!response.headers['etag'];
       const cacheable = cacheControl.includes('public') || cacheControl.includes('max-age');
 
