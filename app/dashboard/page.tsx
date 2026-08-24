@@ -4,31 +4,44 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SimpleDashboard from '@/components/SimpleDashboard';
 import Link from 'next/link';
+import { createSupabaseBrowserClient } from '@/lib/supabase';
+import { clearLegacySession, getCurrentUser, type SignedInUser } from '@/lib/auth/session';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SignedInUser | null>(null);
 
   useEffect(() => {
-    // Check authentication
-    const isAuth = localStorage.getItem('verifyforge_auth');
-    const userData = localStorage.getItem('verifyforge_user');
+    // The gate is a verified session, not a localStorage flag. The previous
+    // check read `verifyforge_auth === 'true'`, which anyone could set in
+    // devtools — it gated nothing.
+    //
+    // Anything the pre-auth flow left behind is cleared unconditionally. Those
+    // objects carry an invented `user_${Date.now()}` id that maps to no Supabase
+    // user and no ledger row; there is no password to migrate, because sign-in
+    // never checked one. They are not sessions and cannot become sessions.
+    let cancelled = false;
 
-    if (!isAuth || !userData) {
-      // Not authenticated, redirect to auth page
-      router.push('/auth');
-      return;
-    }
+    const check = async (): Promise<void> => {
+      clearLegacySession();
+      const signedIn = await getCurrentUser();
+      if (cancelled) return;
+      if (signedIn === null) {
+        router.push('/auth');
+        return;
+      }
+      setUser(signedIn);
+      setLoading(false);
+    };
 
-    // Load user data
-    setUser(JSON.parse(userData));
-    setLoading(false);
+    void check();
+    return () => { cancelled = true; };
   }, [router]);
 
-  const handleSignOut = () => {
-    localStorage.removeItem('verifyforge_auth');
-    localStorage.removeItem('verifyforge_user');
+  const handleSignOut = async (): Promise<void> => {
+    clearLegacySession();
+    await createSupabaseBrowserClient().auth.signOut();
     router.push('/');
   };
 
@@ -59,11 +72,11 @@ export default function DashboardPage() {
             <div className="flex items-center gap-4">
               {user && (
                 <div className="text-sm text-gray-600">
-                  <span className="font-semibold">Welcome, {user.name || user.email}</span>
+                  <span className="font-semibold">Welcome, {user.email}</span>
                 </div>
               )}
               <button 
-                onClick={handleSignOut}
+                onClick={() => { void handleSignOut(); }}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
                 Sign Out

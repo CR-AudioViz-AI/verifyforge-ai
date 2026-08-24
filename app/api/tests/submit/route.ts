@@ -3,6 +3,7 @@
 // Routes to appropriate testing engine based on test type
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromRequest } from '@/lib/api/central';
 import { CompleteWebTester } from '@/lib/complete-web-testing';
 import { CompleteDocumentTester } from '@/lib/complete-document-testing';
 import { CompleteApiTester } from '@/lib/complete-api-testing';
@@ -29,6 +30,22 @@ import { CompleteToolTester } from '@/lib/complete-tool-testing';
 const testProgressStore = new Map<string, any>();
 
 export async function POST(req: NextRequest) {
+  // No billable work without a verified caller. getUserFromRequest verifies the
+  // Supabase JWT from the Authorization header and returns null on every failure
+  // path — an absent header, a malformed token, a rejected token. It never
+  // returns a stand-in user, so there is no anonymous identity to bill or to
+  // attribute a scan to.
+  const caller = await getUserFromRequest(req);
+  if (caller === null) {
+    return NextResponse.json(
+      {
+        error: 'Sign in required',
+        message: 'This endpoint runs work against a target and must know who is asking. Sign in and retry.',
+      },
+      { status: 401 },
+    );
+  }
+
   try {
     const formData = await req.formData();
     const testType = formData.get('test_type') as string;
@@ -199,6 +216,22 @@ export async function POST(req: NextRequest) {
 // GET endpoint for progress and credits
 export async function GET(req: NextRequest) {
   try {
+    // The GET side is gated too. It was not, until writing the auth e2e made the
+    // asymmetry obvious: ?action=progress returns the progress of a test by id,
+    // and an id is guessable enough that leaving it open hands out other
+    // people's run state to anyone who asks. The client already sends the token
+    // here — authedFetch is used for both calls — so nothing legitimate breaks.
+    const caller = await getUserFromRequest(req);
+    if (caller === null) {
+      return NextResponse.json(
+        {
+          error: 'Sign in required',
+          message: 'This endpoint reports on work owned by an account and must know who is asking.',
+        },
+        { status: 401 },
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
 

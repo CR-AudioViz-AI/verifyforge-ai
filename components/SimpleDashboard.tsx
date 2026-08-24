@@ -5,6 +5,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { authedFetch } from '@/lib/auth/session';
 import { Upload, Play, FileText, CheckCircle, AlertCircle, TrendingUp, Shield, Zap, Loader2 } from 'lucide-react';
 
 type TestType = 'web' | 'document' | 'game' | 'ai' | 'avatar' | 'tool' | 'api' | 'mobile';
@@ -109,7 +110,7 @@ export default function SimpleDashboard() {
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/tests/submit?action=progress&id=${currentTestId}`);
+        const response = await authedFetch(`/api/tests/submit?action=progress&id=${currentTestId}`);
         if (response.ok) {
           const progress = await response.json();
           setTestProgress(progress);
@@ -143,7 +144,7 @@ export default function SimpleDashboard() {
         formData.append('file', config.file);
       }
 
-      const response = await fetch('/api/tests/submit', {
+      const response = await authedFetch('/api/tests/submit', {
         method: 'POST',
         body: formData
       });

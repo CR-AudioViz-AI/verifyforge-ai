@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ThemeToggle } from './ThemeToggle';
 import { AuthButtons } from './AuthButtons';
-import { CreditsBar } from './CreditsBar';
-import { CentralServices } from '@/lib/central-services';
+import { createSupabaseBrowserClient } from '@/lib/supabase';
 
 interface BrandedHeaderProps {
   appName: string;
@@ -28,8 +27,6 @@ export function BrandedHeader({ appName, appLogo, quickLinks = [] }: BrandedHead
   // `name` is genuinely optional on User; `email` is not. Modelling that exactly
   // keeps exactOptionalPropertyTypes honest at the call sites below.
   const [user, setUser] = useState<{ name: string | undefined; email: string } | null>(null);
-  const [credits, setCredits] = useState(0);
-  const [plan, setPlan] = useState<'free' | 'pro' | 'business' | 'enterprise'>('free');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -38,23 +35,32 @@ export function BrandedHeader({ appName, appLogo, quickLinks = [] }: BrandedHead
 
   const checkAuthStatus = async () => {
     try {
-      const session = await CentralServices.Auth.getSession();
-      if (session.success && session.data) {
-        const currentUser = session.data;
+      // Repointed off CentralServices.Auth.getSession(). That call goes to
+      // CENTRAL_API_BASE — core's domain, a different origin — relying on a
+      // cookie this origin's JavaScript cannot read. The shape bugs fixed here
+      // earlier were real, but they were the second half of the problem: the
+      // call itself does not return a session for a user signed in on THIS
+      // origin, so the header could not show a signed-in visitor either way.
+      const supabase = createSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getUser();
+      const currentUser = sessionData.user;
+      if (currentUser !== null) {
         setIsLoggedIn(true);
-        setUser({ name: currentUser.name, email: currentUser.email });
+        setUser({
+          name: typeof currentUser.user_metadata?.['name'] === 'string'
+            ? (currentUser.user_metadata['name'] as string)
+            : undefined,
+          email: currentUser.email ?? '',
+        });
 
-        // The plan comes from the session's subscription_tier, which is typed as
-        // the four-value union. getBalance() also reports a `tier`, but as a bare
-        // string — using it would need a cast or a fallback to a plausible
-        // default, and a wrong plan renders the wrong price to a paying customer.
-        setPlan(currentUser.subscription_tier);
-
-        // Fetch credits
-        const creditsResult = await CentralServices.Credits.getBalance();
-        if (creditsResult.success) {
-          setCredits(creditsResult.data?.balance ?? 0);
-        }
+        // Credits and plan come from the ledger, read server-side against the
+        // verified session. They are deliberately NOT read here yet: this
+        // component has no authenticated route to ask, and the previous code
+        // asked cross-origin and silently got nothing. Showing 0 credits and
+        // 'free' to a paying customer is the defect that paused production, so
+        // the header shows neither until there is a real answer to show.
+        //
+        // Wired to a real balance endpoint in the ladder work. See issue #45.
       }
     } catch (error) {
       console.error('Auth check error:', error);
@@ -64,19 +70,21 @@ export function BrandedHeader({ appName, appLogo, quickLinks = [] }: BrandedHead
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUser(null);
-    setCredits(0);
-    setPlan('free');
   };
 
   return (
     <>
-      {/* Credits Bar - Only when logged in */}
-      <CreditsBar 
-        isLoggedIn={isLoggedIn} 
-        credits={credits} 
-        plan={plan}
-        {...(user?.name !== undefined ? { userName: user.name } : {})}
-      />
+      {/* The credits bar is not rendered.
+        *
+        * It took `credits` and `plan` from component state that started at 0 and
+        * 'free' and, since the cross-origin balance call returned nothing, never
+        * moved. A signed-in customer on any paid tier was shown "0 credits,
+        * Free" — a displayed number backed by nothing, which is the defect that
+        * paused production.
+        *
+        * It comes back when there is an authenticated endpoint to read a real
+        * balance from. Showing nothing is worse UI and better honesty; showing
+        * zero is a claim about someone's account. See issue #45. */}
       
       {/* Main Header */}
       <header className="sticky top-0 z-50 w-full bg-white dark:bg-slate-900 

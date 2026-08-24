@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { createSupabaseBrowserClient } from '@/lib/supabase';
+import { clearLegacySession } from '@/lib/auth/session';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -14,47 +16,57 @@ export default function AuthPage() {
     name: ''
   });
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+
+    // Anything the pre-auth flow left behind is not a session and cannot become
+    // one. Clear it before establishing a real one so the two never coexist.
+    clearLegacySession();
+
+    const supabase = createSupabaseBrowserClient();
 
     try {
-      // For now, just store in localStorage (temporary solution)
-      // In production, this will use Supabase auth
       if (isSignUp) {
-        // Sign up
-        const user = {
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
-          name: formData.name,
-          id: `user_${Date.now()}`,
-          createdAt: new Date().toISOString(),
-        };
-        localStorage.setItem('verifyforge_user', JSON.stringify(user));
-        localStorage.setItem('verifyforge_auth', 'true');
+          password: formData.password,
+          options: { data: { name: formData.name } },
+        });
+        if (signUpError !== null) {
+          setError(signUpError.message);
+          setLoading(false);
+          return;
+        }
+        // Where email confirmation is enabled, signUp returns a user with no
+        // session. Saying "check your email" is the truth; routing to the
+        // dashboard would land on a page that immediately bounces them back.
+        if (data.session === null) {
+          setError('Account created. Check your email to confirm it, then sign in.');
+          setLoading(false);
+          return;
+        }
       } else {
-        // Sign in (for demo, just check if email exists)
-        const stored = localStorage.getItem('verifyforge_user');
-        if (stored) {
-          const user = JSON.parse(stored);
-          if (user.email === formData.email) {
-            localStorage.setItem('verifyforge_auth', 'true');
-          } else {
-            alert('Invalid credentials');
-            setLoading(false);
-            return;
-          }
-        } else {
-          alert('No account found. Please sign up first.');
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        if (signInError !== null) {
+          // Supabase does not distinguish "no such account" from "wrong
+          // password", and neither do we — telling an attacker which emails
+          // exist is an account-enumeration oracle.
+          setError('Email or password is incorrect.');
           setLoading(false);
           return;
         }
       }
 
-      // Redirect to dashboard
       router.push('/dashboard');
-    } catch (error) {
-      console.error('Auth error:', error);
-      alert('Authentication failed. Please try again.');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -85,11 +97,22 @@ export default function AuthPage() {
         {/* Auth Card */}
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error !== null && (
+              <div
+                role="alert"
+                className="rounded-lg border border-red-500/40 bg-red-500/15 p-3 text-sm text-red-200"
+              >
+                {error}
+              </div>
+            )}
             {/* Name Field (Sign Up Only) */}
             {isSignUp && (
               <div>
-                <label className="block text-white font-medium mb-2">Full Name</label>
+                <label htmlFor="auth-name" className="block text-white font-medium mb-2">
+                  Full Name
+                </label>
                 <input
+                  id="auth-name"
                   type="text"
                   required
                   value={formData.name}
@@ -102,8 +125,11 @@ export default function AuthPage() {
 
             {/* Email Field */}
             <div>
-              <label className="block text-white font-medium mb-2">Email Address</label>
+              <label htmlFor="auth-email" className="block text-white font-medium mb-2">
+                Email Address
+              </label>
               <input
+                id="auth-email"
                 type="email"
                 required
                 value={formData.email}
@@ -115,8 +141,11 @@ export default function AuthPage() {
 
             {/* Password Field */}
             <div>
-              <label className="block text-white font-medium mb-2">Password</label>
+              <label htmlFor="auth-password" className="block text-white font-medium mb-2">
+                Password
+              </label>
               <input
+                id="auth-password"
                 type="password"
                 required
                 value={formData.password}
