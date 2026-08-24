@@ -8,13 +8,33 @@ on:
       - 'docs/**'
       - '.gitignore'
       - 'LICENSE'
+
+  # NO `branches:` FILTER, AND NO `paths-ignore`. Both are deliberate. See #63.
+  #
+  # `branches:` under pull_request matches the BASE, not the head. With
+  # `branches: [main]` a PR stacked on another branch was filtered out before a
+  # job existed, so it got no CI at all — and an empty check list is visually
+  # identical to a pending one, except that it never resolves. #57 sat in that
+  # state from open to merge-time and read as "still spinning up".
+  #
+  # `paths-ignore` is removed because these checks are REQUIRED in branch
+  # protection. A path filter that skips the whole workflow produces no check
+  # run, a required check that never appears blocks the PR permanently, and the
+  # fix is not discoverable from the PR page. A docs-only PR paying a minute of
+  # runner time is the cheaper failure. It stays on `push`, where nothing is
+  # waiting on the result.
+  #
+  # `edited` is here so retargeting a PR re-runs CI: pull_request builds a merge
+  # commit of head+base, so changing the base invalidates every earlier run even
+  # though the head SHA is untouched.
+  #
+  # DO NOT "optimise" `edited` with a job-level `if` that skips body-only edits.
+  # A skipped job still posts a check run, and GitHub counts a skipped required
+  # check as PASSING — so editing the description would paper a green over a red
+  # run. Burning a runner minute is better than a green that means nothing.
   pull_request:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.gitignore'
-      - 'LICENSE'
+    types: [opened, synchronize, reopened, edited]
+
   schedule:
     # Run nightly at 2 AM UTC
     - cron: '0 2 * * *'
