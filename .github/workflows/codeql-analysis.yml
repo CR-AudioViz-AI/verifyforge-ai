@@ -2,9 +2,12 @@ name: "CodeQL Security Scan"
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main ]
+  # No `branches:` filter — see #63. It matched the BASE, so a stacked PR was
+  # never analysed. The old list also named master and develop, neither of which
+  # exists in this repository.
   pull_request:
-    branches: [ main, master, develop ]
+    types: [opened, synchronize, reopened, edited]
   schedule:
     - cron: '0 4 * * 1' # Weekly on Mondays at 4 AM
 

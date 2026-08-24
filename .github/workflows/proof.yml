@@ -5,10 +5,21 @@
 name: proof
 
 on:
+  # No `branches:` filter — it matches the BASE, so a PR stacked on another
+  # branch got no CI at all, silently. `edited` re-runs on a retarget, because
+  # pull_request builds a merge commit of head+base and changing the base
+  # invalidates every earlier run. See #63 and the fuller note in e2e-tests.yml.
   pull_request:
-    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+
+  # NARROWED from [main, 'feat/**'] to [main]. A branch matching feat/** used to
+  # produce a SECOND check run also called `typecheck-and-prove` — one from this
+  # push trigger, one from pull_request — and PR #56 carried both. Branch
+  # protection matches a required check BY NAME, so two runs sharing one name is
+  # ambiguous exactly where ambiguity is most expensive. Every PR now runs this
+  # once, via pull_request; push covers main after merge.
   push:
-    branches: [main, 'feat/**']
+    branches: [main]
 
 jobs:
   typecheck-and-prove:
