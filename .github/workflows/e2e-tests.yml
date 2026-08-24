@@ -60,6 +60,12 @@ jobs:
         run: npx playwright test
         env:
           BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:3000' }}
+          # The auth proof needs a real account. Absent these, e2e/auth.spec.ts
+          # skips and says so loudly at collection time — it never passes
+          # vacuously. A green suite with these unset proves nothing about
+          # authentication, which is the state the banner exists to announce.
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
