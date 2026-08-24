@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 /**
  * e2e/auth.spec.ts — proof that authentication actually works.
@@ -48,15 +48,36 @@ if (!HAVE_CREDENTIALS) {
   );
 }
 
+/**
+ * Sign in, driven through the ACCESSIBLE names of the fields.
+ *
+ * The first version of this file used getByPlaceholder(/email/i) and it timed
+ * out on every run: the placeholders are 'you@example.com' and a run of bullet
+ * characters. That is correct copy and was never going to match — the locator
+ * was written from an assumption about the page rather than from the page.
+ *
+ * Reaching for input[type=email] would have made this green while leaving the
+ * real defect in place. The labels on /auth were plain <label> elements with no
+ * htmlFor and no wrapped input, so they named nothing to a screen reader: a
+ * WCAG 2.2 AA failure, not a test inconvenience. They are associated now, and
+ * this locator asserts the association — drop the htmlFor again and this fails.
+ */
+async function signIn(page: Page): Promise<void> {
+  await page.goto('/auth');
+  await page.getByLabel(/email/i).fill(EMAIL as string);
+  await page.getByLabel(/password/i).fill(PASSWORD as string);
+  // Scoped to the form deliberately. In sign-in mode this is the only match,
+  // but the toggle beneath the form reads "Already have an account? Sign in"
+  // in sign-up mode, and an unscoped locator would go strict-mode ambiguous
+  // the first time a test starts there.
+  await page.locator('form').getByRole('button', { name: /sign in|log in/i }).click();
+}
+
 test.describe('Authentication', () => {
   test.skip(!HAVE_CREDENTIALS, 'AUTH E2E DID NOT RUN — E2E_TEST_EMAIL / E2E_TEST_PASSWORD unset.');
 
   test('a real sign-in establishes a session that survives a reload', async ({ page }) => {
-    await page.goto('/auth');
-
-    await page.getByPlaceholder(/email/i).fill(EMAIL as string);
-    await page.getByPlaceholder(/password/i).fill(PASSWORD as string);
-    await page.getByRole('button', { name: /sign in|log in/i }).click();
+    await signIn(page);
 
     // The dashboard is gated on a verified session, so arriving is itself the
     // assertion: the previous localStorage flag could not have got us here.
@@ -93,10 +114,7 @@ test.describe('Authentication', () => {
   });
 
   test('the API accepts the same request with a bearer token', async ({ page, request }) => {
-    await page.goto('/auth');
-    await page.getByPlaceholder(/email/i).fill(EMAIL as string);
-    await page.getByPlaceholder(/password/i).fill(PASSWORD as string);
-    await page.getByRole('button', { name: /sign in|log in/i }).click();
+    await signIn(page);
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
 
     const token = await page.evaluate(() => {

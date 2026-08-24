@@ -108,8 +108,11 @@ export default function AuthPage() {
             {/* Name Field (Sign Up Only) */}
             {isSignUp && (
               <div>
-                <label className="block text-white font-medium mb-2">Full Name</label>
+                <label htmlFor="auth-name" className="block text-white font-medium mb-2">
+                  Full Name
+                </label>
                 <input
+                  id="auth-name"
                   type="text"
                   required
                   value={formData.name}
@@ -122,8 +125,11 @@ export default function AuthPage() {
 
             {/* Email Field */}
             <div>
-              <label className="block text-white font-medium mb-2">Email Address</label>
+              <label htmlFor="auth-email" className="block text-white font-medium mb-2">
+                Email Address
+              </label>
               <input
+                id="auth-email"
                 type="email"
                 required
                 value={formData.email}
@@ -135,8 +141,11 @@ export default function AuthPage() {
 
             {/* Password Field */}
             <div>
-              <label className="block text-white font-medium mb-2">Password</label>
+              <label htmlFor="auth-password" className="block text-white font-medium mb-2">
+                Password
+              </label>
               <input
+                id="auth-password"
                 type="password"
                 required
                 value={formData.password}
