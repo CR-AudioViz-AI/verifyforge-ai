@@ -62,9 +62,6 @@ export default function DashboardPage() {
                   <span className="font-semibold">Welcome, {user.name || user.email}</span>
                 </div>
               )}
-              <div className="text-sm text-gray-600 bg-green-50 px-3 py-1 rounded-lg border border-green-200">
-                <span className="font-semibold">Free Tests:</span> {user?.freeTests || 3}
-              </div>
               <button 
                 onClick={handleSignOut}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors"

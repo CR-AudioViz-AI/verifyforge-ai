@@ -27,9 +27,6 @@ interface TestResult {
   id: string;
   status: string;
   duration?: string;
-  creditsCharged: number;
-  usedFreeTest: boolean;
-  remainingFreeTests: number;
   results: {
     overall: string;
     score: number;
@@ -88,23 +85,22 @@ export default function SimpleDashboard() {
   const [testProgress, setTestProgress] = useState<TestProgress | null>(null);
   const [currentTestId, setCurrentTestId] = useState<string | null>(null);
   const [result, setResult] = useState<TestResult | null>(null);
-  const [freeTests, setFreeTests] = useState(3);
 
   const testTypes = [
-    { type: 'web' as TestType, icon: '🌐', label: 'Website', desc: 'Test web applications', credits: 10 },
-    { type: 'document' as TestType, icon: '📄', label: 'Document', desc: 'Test PDF/DOCX/XLSX', credits: 8 },
-    { type: 'game' as TestType, icon: '🎮', label: 'Game', desc: 'Test FPS & graphics', credits: 15 },
-    { type: 'ai' as TestType, icon: '🤖', label: 'AI/Bot', desc: 'Test chatbots', credits: 12 },
-    { type: 'avatar' as TestType, icon: '👤', label: 'Avatar', desc: 'Test 3D avatars', credits: 10 },
-    { type: 'tool' as TestType, icon: '🔧', label: 'Tool', desc: 'Test capabilities', credits: 8 },
-    { type: 'api' as TestType, icon: '⚡', label: 'API', desc: 'Test endpoints', credits: 5 },
-    { type: 'mobile' as TestType, icon: '📱', label: 'Mobile', desc: 'Test mobile apps', credits: 12 }
+    { type: 'web' as TestType, icon: '🌐', label: 'Website', desc: 'Test web applications' },
+    { type: 'document' as TestType, icon: '📄', label: 'Document', desc: 'Test PDF/DOCX/XLSX' },
+    { type: 'game' as TestType, icon: '🎮', label: 'Game', desc: 'Test FPS & graphics' },
+    { type: 'ai' as TestType, icon: '🤖', label: 'AI/Bot', desc: 'Test chatbots' },
+    { type: 'avatar' as TestType, icon: '👤', label: 'Avatar', desc: 'Test 3D avatars' },
+    { type: 'tool' as TestType, icon: '🔧', label: 'Tool', desc: 'Test capabilities' },
+    { type: 'api' as TestType, icon: '⚡', label: 'API', desc: 'Test endpoints' },
+    { type: 'mobile' as TestType, icon: '📱', label: 'Mobile', desc: 'Test mobile apps' }
   ];
 
   const economyOptions = [
-    { mode: 'standard' as EconomyMode, label: 'Standard', desc: 'Full features', discount: 0 },
-    { mode: 'economy' as EconomyMode, label: 'Economy', desc: 'Essential tests', discount: 40 },
-    { mode: 'ultra_economy' as EconomyMode, label: 'Ultra', desc: 'Bare minimum', discount: 60 }
+    { mode: 'standard' as EconomyMode, label: 'Standard', desc: 'Full features' },
+    { mode: 'economy' as EconomyMode, label: 'Economy', desc: 'Essential tests' },
+    { mode: 'ultra_economy' as EconomyMode, label: 'Ultra', desc: 'Bare minimum' }
   ];
 
   // Poll for test progress
@@ -157,7 +153,6 @@ export default function SimpleDashboard() {
       if (response.ok) {
         setCurrentTestId(data.id);
         setResult(data);
-        setFreeTests(data.remainingFreeTests);
         setActiveTab('results');
         setStep(1);
         setConfig({
@@ -178,16 +173,6 @@ export default function SimpleDashboard() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const getCredits = () => {
-    const testType = testTypes.find(t => t.type === config.testType);
-    if (!testType) return 0;
-    
-    const baseCredits = testType.credits;
-    const discount = economyOptions.find(e => e.mode === config.economyMode)?.discount || 0;
-    
-    return Math.ceil(baseCredits * (1 - discount / 100));
   };
 
   return (
@@ -216,10 +201,6 @@ export default function SimpleDashboard() {
         >
           Results
         </button>
-        <div className="ml-auto flex items-center gap-2 text-sm">
-          <span className="text-gray-600">Free Tests:</span>
-          <span className="font-bold text-blue-600">{freeTests}</span>
-        </div>
       </div>
 
       {activeTab === 'wizard' && (
@@ -253,7 +234,6 @@ export default function SimpleDashboard() {
                     <div className="text-4xl mb-2">{test.icon}</div>
                     <div className="font-semibold">{test.label}</div>
                     <div className="text-xs text-gray-500 mt-1">{test.desc}</div>
-                    <div className="text-xs text-blue-600 mt-2">{test.credits} credits</div>
                   </button>
                 ))}
               </div>
@@ -331,24 +311,9 @@ export default function SimpleDashboard() {
                         <div className="font-semibold">{option.label}</div>
                         <div className="text-sm text-gray-600">{option.desc}</div>
                       </div>
-                      {option.discount > 0 && (
-                        <div className="text-green-600 font-semibold">-{option.discount}%</div>
-                      )}
                     </div>
                   </button>
                 ))}
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold">Credits Required:</span>
-                  <span className="text-2xl font-bold text-blue-600">{getCredits()}</span>
-                </div>
-                {freeTests > 0 && (
-                  <div className="text-sm text-green-600 mt-2">
-                    ✓ This will use 1 FREE test (0 credits)
-                  </div>
-                )}
               </div>
 
               {submitting && testProgress && (
@@ -442,13 +407,6 @@ export default function SimpleDashboard() {
               </div>
             )}
 
-            {result.usedFreeTest && (
-              <div className="mt-4 bg-green-50 p-3 rounded-lg text-center">
-                <span className="text-green-700 font-semibold">
-                  ✓ FREE test used! {result.remainingFreeTests} free tests remaining
-                </span>
-              </div>
-            )}
           </div>
 
           {result.results.performanceMetrics && result.results.performanceMetrics.loadTime > 0 && (
