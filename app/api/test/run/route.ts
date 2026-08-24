@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getUserFromRequest } from '@/lib/api/central';
 import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 export const runtime = 'nodejs'
 export const maxDuration = 300 // 5 minutes
 
 export async function POST(request: NextRequest) {
+  // No billable work without a verified caller. getUserFromRequest verifies the
+  // Supabase JWT from the Authorization header and returns null on every failure
+  // path — an absent header, a malformed token, a rejected token. It never
+  // returns a stand-in user, so there is no anonymous identity to bill or to
+  // attribute a scan to.
+  const caller = await getUserFromRequest(request);
+  if (caller === null) {
+    return NextResponse.json(
+      {
+        error: 'Sign in required',
+        message: 'This endpoint runs work against a target and must know who is asking. Sign in and retry.',
+      },
+      { status: 401 },
+    );
+  }
+
   try {
     const formData = await request.formData()
     const testType = formData.get('testType') as string
