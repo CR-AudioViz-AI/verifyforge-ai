@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { authedFetch } from '@/lib/auth/session';
-import { Upload, Play, FileText, CheckCircle, AlertCircle, TrendingUp, Shield, Zap, Loader2 } from 'lucide-react';
+import { Upload, Play, FileText, CheckCircle, AlertCircle, TrendingUp, Shield, Loader2 } from 'lucide-react';
 
 type TestType = 'web' | 'document' | 'game' | 'ai' | 'avatar' | 'tool' | 'api' | 'mobile';
 type EconomyMode = 'standard' | 'economy' | 'ultra_economy';
@@ -64,11 +64,6 @@ interface TestResult {
       internalLinks: number;
       externalLinks: number;
       brokenLinks: string[];
-    };
-    javariAutoFix?: {
-      available: boolean;
-      confidence: number;
-      message: string;
     };
   };
 }
@@ -472,18 +467,6 @@ export default function SimpleDashboard() {
             </div>
           )}
 
-          {result.results.javariAutoFix && result.results.javariAutoFix.available && (
-            <div className="bg-purple-50 rounded-lg p-6 border-2 border-purple-200">
-              <div className="flex items-center gap-3 mb-2">
-                <Zap className="w-6 h-6 text-purple-600" />
-                <h3 className="text-xl font-semibold text-purple-900">Javari Auto-Fix Available</h3>
-              </div>
-              <p className="text-purple-800 mb-3">{result.results.javariAutoFix.message}</p>
-              <button className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700">
-                Apply Fixes ({result.results.javariAutoFix.confidence}% confidence)
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>

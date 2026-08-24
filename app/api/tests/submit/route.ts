@@ -233,16 +233,23 @@ export async function POST(req: NextRequest) {
       startedAt: new Date(startTime).toISOString(),
       completedAt: new Date(endTime).toISOString(),
       duration: `${(duration / 1000).toFixed(2)}s`,
-      results: {
-        ...testResults,
-        javariAutoFix: {
-          available: testResults.issues?.length > 0,
-          confidence: testResults.issues?.length > 0 ? 90 : 0,
-          message: testResults.issues?.length > 0 
-            ? `Javari AI can automatically fix ${testResults.issues.length} issue(s) with 90% confidence`
-            : 'No issues found to fix'
-        }
-      },
+      // javariAutoFix REMOVED — it advertised a capability that does not exist.
+      //
+      // It reported `confidence: 90` as a hardcoded literal, with `available`
+      // set to "this scan found at least one issue", and told the user "Javari
+      // AI can automatically fix N issue(s) with 90% confidence". Nothing
+      // measured that 90, and there is no autofix implementation for it to
+      // describe — the `autoFixable` flags in lib/modules/checks are a separate,
+      // real, per-issue property and are overwhelmingly false.
+      //
+      // The dashboard rendered it as a heading and an "Apply Fixes" button with
+      // no onClick handler, so the button did nothing when pressed.
+      //
+      // This is the defect that paused production — a number the product cannot
+      // back — still live on the endpoint being metered. It is removed rather
+      // than corrected, because there is no correct value for the confidence of
+      // a feature that does not exist. It comes back when autofix does.
+      results: testResults,
       report: {
         url: `/reports/${testId}`,
         downloadUrl: `/api/reports/${testId}/download`
