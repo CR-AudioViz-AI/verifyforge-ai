@@ -12,11 +12,18 @@ import { CompleteMobileTester } from '@/lib/complete-mobile-testing';
 import { CompleteAvatarTester } from '@/lib/complete-avatar-testing';
 import { CompleteToolTester } from '@/lib/complete-tool-testing';
 
-// Simple in-memory credit tracking
-let userCredits = {
-  freeTests: 3,
-  paidCredits: 0
-};
+// 2026-08-24: the in-memory credit counter was REMOVED, not replaced.
+//
+// It was `let userCredits = { freeTests: 3, paidCredits: 0 }` at module scope:
+// one counter shared by every caller, reset on every lambda cold start, keyed to
+// no user, and reported to the client as `remainingFreeTests` /
+// `remainingPaidCredits` as though it described their account. It did not. Two
+// concurrent instances held different numbers and both were wrong.
+//
+// Nothing here charges or checks credits now. That is deliberate and temporary:
+// real metering needs a real caller identity, which this route does not yet
+// establish, and inventing a number in the meantime is the defect being removed.
+// See issue #45.
 
 // Store test progress
 const testProgressStore = new Map<string, any>();
@@ -44,46 +51,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check credits
-    if (userCredits.freeTests <= 0 && userCredits.paidCredits <= 0) {
-      return NextResponse.json(
-        { 
-          error: 'No credits remaining',
-          message: 'You have used all your free tests. Please upgrade to continue.',
-          freeTests: 0,
-          paidCredits: 0
-        },
-        { status: 402 }
-      );
-    }
-
     // Generate test ID
     const testId = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const target = targetUrl || (file ? file.name : 'uploaded-file');
-
-    // Handle credits
-    let creditsCharged = 0;
-    let usedFreeTest = false;
-
-    if (userCredits.freeTests > 0) {
-      userCredits.freeTests--;
-      creditsCharged = 0;
-      usedFreeTest = true;
-      console.log(`✅ FREE test used! Remaining: ${userCredits.freeTests}`);
-    } else {
-      const creditCosts: Record<string, number> = {
-        web: 10, document: 8, game: 15, ai: 12,
-        avatar: 10, tool: 8, api: 5, mobile: 12
-      };
-      const discounts: Record<string, number> = {
-        standard: 0, economy: 40, ultra_economy: 60
-      };
-      const baseCredits = creditCosts[testType] || 10;
-      const discount = discounts[economyMode] || 0;
-      creditsCharged = Math.ceil(baseCredits * (1 - discount / 100));
-      userCredits.paidCredits -= creditsCharged;
-      console.log(`💳 Paid credits used: ${creditsCharged}. Remaining: ${userCredits.paidCredits}`);
-    }
 
     // Initialize progress
     testProgressStore.set(testId, {
@@ -188,10 +158,6 @@ export async function POST(req: NextRequest) {
       target,
       mode: economyMode || 'standard',
       status: 'completed',
-      creditsCharged,
-      usedFreeTest,
-      remainingFreeTests: userCredits.freeTests,
-      remainingPaidCredits: userCredits.paidCredits,
       startedAt: new Date(startTime).toISOString(),
       completedAt: new Date(endTime).toISOString(),
       duration: `${(duration / 1000).toFixed(2)}s`,
@@ -237,11 +203,15 @@ export async function GET(req: NextRequest) {
     const action = searchParams.get('action');
 
     if (action === 'credits') {
+      // Refuse rather than answer with a number nobody can stand behind. This
+      // used to report a module-global counter as the caller's balance.
       return NextResponse.json({
-        freeTests: userCredits.freeTests,
-        paidCredits: userCredits.paidCredits,
-        total: userCredits.freeTests + userCredits.paidCredits
-      }, { status: 200 });
+        error: 'Credit balance is not available from this endpoint',
+        message:
+          'This route does not yet establish who is calling, so it cannot report ' +
+          'an account balance. It previously returned an in-memory counter that ' +
+          'was shared between callers and reset on every cold start.',
+      }, { status: 501 });
     }
 
     if (action === 'progress') {

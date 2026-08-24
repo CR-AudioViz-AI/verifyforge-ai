@@ -28,8 +28,6 @@ export default function AuthPage() {
           name: formData.name,
           id: `user_${Date.now()}`,
           createdAt: new Date().toISOString(),
-          freeTests: 3,
-          paidCredits: 0
         };
         localStorage.setItem('verifyforge_user', JSON.stringify(user));
         localStorage.setItem('verifyforge_auth', 'true');
@@ -80,7 +78,7 @@ export default function AuthPage() {
             {isSignUp ? 'Create Your Account' : 'Welcome Back'}
           </h2>
           <p className="text-gray-300">
-            {isSignUp ? 'Get 3 free tests instantly' : 'Sign in to continue testing'}
+            {isSignUp ? 'Create an account to get started' : 'Sign in to continue testing'}
           </p>
         </div>
 
@@ -156,14 +154,6 @@ export default function AuthPage() {
             </button>
           </div>
 
-          {/* Free Tests Reminder */}
-          {isSignUp && (
-            <div className="mt-6 bg-green-500/20 border border-green-500/30 rounded-lg p-4">
-              <p className="text-green-300 text-sm text-center">
-                🎉 <strong>3 FREE tests</strong> included with every new account!
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Back to Home */}
