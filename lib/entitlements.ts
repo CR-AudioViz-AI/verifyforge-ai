@@ -13,7 +13,9 @@
 // CR AudioViz AI, LLC · EIN 39-3646201 · 2026-08-24
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_URL } from '@/lib/supabase';
+// From supabase-config, NOT from lib/supabase: that module builds a client at
+// import time and would make this offline-capable module require a WebSocket.
+import { SUPABASE_URL } from '@/lib/supabase-config';
 
 /** Postgres unique_violation. The collision we are relying on, by number. */
 const UNIQUE_VIOLATION = '23505';
