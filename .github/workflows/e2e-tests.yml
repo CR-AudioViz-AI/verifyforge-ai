@@ -62,7 +62,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # 2026-08-27: was '20' while PRODUCTION RUNS NODE 24. A CI runtime older than
+          # production means CI can pass on code that fails in production, and the
+          # reverse - which is how the module-scope Supabase client's Node<22
+          # WebSocket requirement produced symptoms nobody could reproduce.
+          #
+          # 22 is the floor that satisfies the WebSocket requirement and stays
+          # within the production major.
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies

@@ -21,8 +21,40 @@ export { isAdmin, shouldChargeCredits, ADMIN_EMAILS, CentralServices } from './c
 // only wants a URL must be able to get one without paying for that. See #61.
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase-config';
 
-// Standard client for general use
-export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// 2026-08-27: THE ROOT CAUSE BEHIND EVERY #61 DISGUISE.
+//
+// This was `export const supabase = createClient(...)` - a client CONSTRUCTED AT
+// MODULE SCOPE. A module-level side effect runs on IMPORT, so every one of the
+// five modules importing anything from this file paid for it, and inherited the
+// Node<22 WebSocket requirement that comes with it. One landmine, many symptoms.
+//
+// VERIFIED BEFORE CHANGING IT: zero files import the eager `supabase` const.
+// All five importers use the FACTORY functions - createSupabaseBrowserClient and
+// createSupabaseServerClient. So making it lazy needs no call-site changes at all.
+//
+// The Proxy preserves the `supabase.from(...)` shape for any consumer added later
+// while deferring construction to first use. If nothing touches it, no client is
+// ever built and no WebSocket requirement is inherited.
+//
+// NOTE: lib/supabase/client.ts in the CORE repo is a deliberate module-level
+// singleton for the BROWSER, because chunked cookies get corrupted by racing
+// client instances (locked 2026-07-15). That is the opposite case and must stay
+// eager. Same shape, opposite correct answer - which is why this needed checking
+// rather than pattern-matching.
+let _lazyClient: SupabaseClient | null = null;
+
+export function getSupabase(): SupabaseClient {
+  if (!_lazyClient) _lazyClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return _lazyClient;
+}
+
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_t, prop) {
+    const client = getSupabase() as unknown as Record<string | symbol, unknown>;
+    const value = client[prop];
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
 
 // Browser client for auth (SSR-safe singleton pattern)
 let browserClient: SupabaseClient | null = null;
