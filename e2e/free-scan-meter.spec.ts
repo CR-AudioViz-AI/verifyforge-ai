@@ -114,8 +114,26 @@ test.describe('The free scan is metered', () => {
       });
       expect(first.status(), 'the first free scan should be allowed').toBe(200);
 
+      // A 200 IS NOT EVIDENCE THE SCAN RAN. The route catches a tester failure,
+      // builds a synthetic overall:'fail' result and still answers 200 — so a
+      // crashed scanner and a scan that found real problems are the same status
+      // code and the same shape. That ambiguity cost a full CI cycle here: the
+      // claim was released by the failure path and this test reported "no row",
+      // which reads as a broken meter rather than a broken scan.
+      //
+      // So establish which happened before asserting anything about the claim.
+      const firstBody = await first.json() as {
+        results?: { issues?: Array<{ category?: string; message?: string }> };
+      };
+      const testerError = firstBody.results?.issues?.find((i) => i.category === 'Testing Error');
+      expect(
+        testerError,
+        `the scan itself failed, so the claim was correctly released — this is not a `
+        + `meter failure: ${testerError?.message ?? ''}`,
+      ).toBeUndefined();
+
       // The claim was taken. This is the half a fake store cannot prove.
-      expect(await claimRowCount(ownerId), 'the first scan should claim the row').toBe(1);
+      expect(await claimRowCount(ownerId), 'a completed scan should hold the claim').toBe(1);
 
       // SECOND scan — refused BEFORE any work. This is the cost gate.
       const second = await request.post('/api/tests/submit', {
