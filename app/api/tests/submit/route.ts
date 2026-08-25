@@ -250,10 +250,14 @@ export async function POST(req: NextRequest) {
       // than corrected, because there is no correct value for the confidence of
       // a feature that does not exist. It comes back when autofix does.
       results: testResults,
-      report: {
-        url: `/reports/${testId}`,
-        downloadUrl: `/api/reports/${testId}/download`
-      }
+      // `report` REMOVED — it advertised two routes that do not exist.
+      //
+      // url pointed at /reports/{id} and downloadUrl at
+      // /api/reports/{id}/download. Neither route exists in app/, both 404, and
+      // nothing consumed either field. Handing a caller a link to a report that
+      // was never written is an unverifiable claim, the same class as the
+      // fabricated autofix confidence removed above and the /pricing link the
+      // 429 refuses to emit. They come back when the routes do.
     };
 
     testProgressStore.delete(testId);

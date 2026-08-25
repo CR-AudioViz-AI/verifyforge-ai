@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { createClient } from '@supabase/supabase-js';
 import { signIn, accessToken, ownerIdFromToken, HAVE_CREDENTIALS } from './support/sign-in';
 
 /**
@@ -42,21 +41,49 @@ if (!CAN_RUN) {
   );
 }
 
-function serviceClient() {
-  return createClient(SUPABASE_URL, SERVICE_KEY as string);
+/**
+ * PostgREST directly, NOT createClient().
+ *
+ * createClient() builds a RealtimeClient, which needs a global WebSocket. The
+ * Playwright container runs Node 20, which has none, so it throws:
+ *
+ *     Error: Node.js detected but native WebSocket not found.
+ *     Suggested solution: Ensure you are running Node.js 22+ ...
+ *
+ * That is issue #61 — the @supabase/supabase-js Node<22 deprecation warning —
+ * arriving as a hard failure. The APP is unaffected: Next.js polyfills
+ * WebSocket in its server runtime, which is why every other auth test passes.
+ * It is a bare Node process calling createClient that breaks.
+ *
+ * This test needs two table operations and no realtime, no auth and no session,
+ * so it talks to PostgREST over fetch and depends on no Node version at all.
+ * Bumping CI to Node 22 is the right fix for #61 and belongs in its own change,
+ * not smuggled into a metering PR.
+ */
+async function pgrest(query: string, init: RequestInit): Promise<Response> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/jvf_account_entitlements?${query}`, {
+    ...init,
+    headers: {
+      apikey: SERVICE_KEY as string,
+      Authorization: `Bearer ${SERVICE_KEY as string}`,
+      'Content-Type': 'application/json',
+      ...(init.headers ?? {}),
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`PostgREST ${init.method ?? 'GET'} failed ${res.status}: ${await res.text()}`);
+  }
+  return res;
 }
 
 async function clearClaim(ownerId: string): Promise<void> {
-  const { error } = await serviceClient()
-    .from('jvf_account_entitlements').delete().eq('owner_id', ownerId);
-  if (error !== null) throw new Error(`cleanup failed: ${error.message}`);
+  await pgrest(`owner_id=eq.${ownerId}`, { method: 'DELETE' });
 }
 
 async function claimRowCount(ownerId: string): Promise<number> {
-  const { data, error } = await serviceClient()
-    .from('jvf_account_entitlements').select('owner_id').eq('owner_id', ownerId);
-  if (error !== null) throw new Error(`claim read failed: ${error.message}`);
-  return data?.length ?? 0;
+  const res = await pgrest(`owner_id=eq.${ownerId}&select=owner_id`, { method: 'GET' });
+  const rows: unknown = await res.json();
+  return Array.isArray(rows) ? rows.length : 0;
 }
 
 test.describe('The free scan is metered', () => {
