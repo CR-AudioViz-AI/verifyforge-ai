@@ -10,7 +10,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.9.0",
+    "@craudioviz/platform-sdk": "git+https://github.com/CR-AudioViz-AI/platform-sdk.git",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.5",
     "cheerio": "^1.0.0-rc.12",

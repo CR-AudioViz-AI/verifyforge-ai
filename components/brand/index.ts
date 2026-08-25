@@ -1,26 +1,50 @@
 /**
- * CR AudioViz AI Brand System
- * 
- * Export all brand components and configurations.
- * Usage: import { BrandedHeader, ThemeProvider } from '@/components/brand';
+ * CR AudioViz AI Brand System — re-export from platform-sdk.
+ *
+ * 2026-08-29: this directory held LOCAL COPIES of all six shell components -
+ * BrandedHeader, BrandedFooter, AuthButtons, CreditsBar, ThemeProvider,
+ * ThemeToggle. They had ALREADY DRIFTED: BrandedHeader was 194 lines here against
+ * 181 in the SDK, with different checksums. Nobody forked it on purpose; two
+ * copies of one thing always diverge.
+ *
+ * ARCHITECTURE-CORE-VS-APP-LAW: if more than one app needs it, it is CORE and
+ * there is exactly ONE of it. The shell is the most-shared thing on the platform.
+ * A forked copy means this app's header stops changing when the brand changes,
+ * and the customer sees two different platforms depending which page they are on.
+ *
+ * This barrel now RE-EXPORTS from the SDK rather than deleting the local imports,
+ * so every existing `from '@/components/brand'` keeps working while there is only
+ * one implementation behind it. The local .tsx files are removed in the same
+ * commit.
+ *
+ * That duplication class has been found FOURTEEN times across this platform - two
+ * rival sendEmail definitions, an unrendered OAuth provider list, nine credits
+ * implementations. This is the first one caught before it cost anything.
+ *
+ * CR AudioViz AI, LLC · EIN 39-3646201
  */
+export {
+  BrandedHeader,
+  BrandedFooter,
+  AuthButtons,
+  CreditsBar,
+  ThemeProvider,
+  ThemeToggle,
+  // useTheme is exported by the SDK barrel and had zero callers here - kept so a
+  // future consumer does not reach for a local reimplementation.
+  useTheme,
+} from '@craudioviz/platform-sdk';
 
-// Configuration
-export { default as brandConfig, BRAND_COLORS, THEME_CONFIG, TYPOGRAPHY, SPACING, LOGO_SPECS, CREDITS_CONFIG, APP_LOGO_STATUS } from './brand-config';
-
-// Theme
-export { ThemeProvider, useTheme } from './ThemeProvider';
-export { ThemeToggle } from './ThemeToggle';
-
-// Components
-export { BrandedHeader } from './BrandedHeader';
-export { BrandedFooter } from './BrandedFooter';
-export { CreditsBar } from './CreditsBar';
-export { AuthButtons } from './AuthButtons';
-
-// 2026-08-23: `export { brandConfig as tailwindBrandConfig } from
-// './tailwind.brand.config'` was removed. That module does not exist in this
-// repository and nothing imports the symbol, so the line was a re-export of
-// nothing that broke the type check. components/brand/ is copied across repos —
-// if the file exists elsewhere, this is a divergence to reconcile upstream
-// rather than a file to invent here.
+// brand-config stays local: it holds THIS APP's identity (name, slug, accent),
+// which is app-specific by definition. The law's test says so - only this app
+// uses it, so it belongs to this app.
+export {
+  default as brandConfig,
+  BRAND_COLORS,
+  THEME_CONFIG,
+  TYPOGRAPHY,
+  SPACING,
+  LOGO_SPECS,
+  CREDITS_CONFIG,
+  APP_LOGO_STATUS,
+} from './brand-config';
