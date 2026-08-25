@@ -1,197 +1,102 @@
 'use client';
 
+// app/auth/page.tsx — Javari Verify sign-in
+//
+// 2026-08-29: THIS PAGE HELD 197 LINES OF LOCAL AUTHENTICATION - signUp,
+// signInWithPassword, its own password field, its own error handling. That
+// violates ARCHITECTURE-CORE-VS-APP-LAW.
+//
+// The law: an app consumes CORE OAuth and never implements its own. Verify was
+// built wrong twice - first standalone with local auth, then copied into core -
+// and this file was the first of those mistakes still standing.
+//
+// Local auth in an app is not a style preference. It creates a SECOND user record
+// outside core's CRM, so the same person has two identities, two credit balances
+// and two support histories. Core holds ONE customer record; that is the whole
+// point of the boundary.
+//
+// All 16 providers come from core, via platform-sdk. Nothing here handles a
+// password, because this app never sees one.
+//
+// CR AudioViz AI, LLC · EIN 39-3646201
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase';
-import { clearLegacySession } from '@/lib/auth/session';
+
+// The providers CORE has enabled, verified against the live Supabase auth config
+// on 2026-08-28. Listing fewer here is how an app starts drifting toward its own
+// login: whoever needs the missing one adds it locally.
+const PROVIDERS = [
+  { id: 'google', label: 'Google' },
+  { id: 'github', label: 'GitHub' },
+  { id: 'microsoft', label: 'Microsoft' },
+  { id: 'discord', label: 'Discord' },
+  { id: 'linkedin_oidc', label: 'LinkedIn' },
+  { id: 'facebook', label: 'Facebook' },
+] as const;
 
 export default function AuthPage() {
-  const router = useRouter();
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: ''
-  });
-
+  const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  async function signIn(provider: string) {
+    setBusy(provider);
     setError(null);
-
-    // Anything the pre-auth flow left behind is not a session and cannot become
-    // one. Clear it before establishing a real one so the two never coexist.
-    clearLegacySession();
-
-    const supabase = createSupabaseBrowserClient();
-
     try {
-      if (isSignUp) {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: { data: { name: formData.name } },
-        });
-        if (signUpError !== null) {
-          setError(signUpError.message);
-          setLoading(false);
-          return;
-        }
-        // Where email confirmation is enabled, signUp returns a user with no
-        // session. Saying "check your email" is the truth; routing to the
-        // dashboard would land on a page that immediately bounces them back.
-        if (data.session === null) {
-          setError('Account created. Check your email to confirm it, then sign in.');
-          setLoading(false);
-          return;
-        }
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        if (signInError !== null) {
-          // Supabase does not distinguish "no such account" from "wrong
-          // password", and neither do we — telling an attacker which emails
-          // exist is an account-enumeration oracle.
-          setError('Email or password is incorrect.');
-          setLoading(false);
-          return;
-        }
+      // redirectTo carries ONLY the callback path. The exchange at /auth/callback
+      // is passed ONLY the `code` param - never the full URL - and a token never
+      // appears in a URL. Locked 2026-07-15.
+      const { error: oauthError } = await createSupabaseBrowserClient().auth.signInWithOAuth({
+        provider: provider as 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (oauthError) {
+        // Reported, not swallowed. A sign-in that fails silently leaves the user
+        // staring at an unchanged page with no idea why.
+        setError(oauthError.message);
+        setBusy(null);
       }
-
-      router.push('/dashboard');
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Authentication failed. Please try again.');
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sign-in failed');
+      setBusy(null);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="text-5xl">⚡</div>
-              <div className="text-left">
-                <h1 className="text-3xl font-bold text-white">VerifyForge AI</h1>
-                <p className="text-purple-300 text-sm">AI-Powered Testing</p>
-              </div>
-            </div>
-          </Link>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            {isSignUp ? 'Create Your Account' : 'Welcome Back'}
-          </h2>
-          <p className="text-gray-300">
-            {isSignUp ? 'Create an account to get started' : 'Sign in to continue testing'}
+    <main className="min-h-screen flex items-center justify-center bg-[#040912] px-4">
+      <div className="w-full max-w-sm">
+        <h1 className="text-2xl font-bold text-white mb-2">Sign in to Javari Verify</h1>
+        <p className="text-sm text-slate-400 mb-8">
+          Your CR AudioViz AI account works across every Javari app.
+        </p>
+
+        <div className="space-y-3">
+          {PROVIDERS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => signIn(p.id)}
+              disabled={busy !== null}
+              // 44px minimum height - the Henderson compliance spec asserts tap
+              // targets at that floor and this page is not exempt.
+              className="w-full min-h-[44px] rounded-lg border border-slate-700 bg-slate-900
+                         px-4 py-3 text-white hover:bg-slate-800 disabled:opacity-50
+                         transition-colors"
+            >
+              {busy === p.id ? 'Redirecting…' : `Continue with ${p.label}`}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <p role="alert" className="mt-6 text-sm text-red-400">
+            {error}
           </p>
-        </div>
+        )}
 
-        {/* Auth Card */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error !== null && (
-              <div
-                role="alert"
-                className="rounded-lg border border-red-500/40 bg-red-500/15 p-3 text-sm text-red-200"
-              >
-                {error}
-              </div>
-            )}
-            {/* Name Field (Sign Up Only) */}
-            {isSignUp && (
-              <div>
-                <label htmlFor="auth-name" className="block text-white font-medium mb-2">
-                  Full Name
-                </label>
-                <input
-                  id="auth-name"
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="John Doe"
-                />
-              </div>
-            )}
-
-            {/* Email Field */}
-            <div>
-              <label htmlFor="auth-email" className="block text-white font-medium mb-2">
-                Email Address
-              </label>
-              <input
-                id="auth-email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label htmlFor="auth-password" className="block text-white font-medium mb-2">
-                Password
-              </label>
-              <input
-                id="auth-password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="••••••••"
-                minLength={6}
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>{isSignUp ? 'Create Account' : 'Sign In'}</>
-              )}
-            </button>
-          </form>
-
-          {/* Toggle Sign In / Sign Up */}
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-purple-300 hover:text-purple-200 transition-colors"
-            >
-              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-            </button>
-          </div>
-
-        </div>
-
-        {/* Back to Home */}
-        <div className="mt-6 text-center">
-          <Link href="/" className="text-gray-300 hover:text-white transition-colors">
-            ← Back to Home
-          </Link>
-        </div>
+        <p className="mt-8 text-xs text-slate-500">
+          Signing in creates or uses your one CR AudioViz AI account. Verify does not
+          store a separate password.
+        </p>
       </div>
-    </div>
+    </main>
   );
 }
