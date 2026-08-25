@@ -193,6 +193,15 @@ interface EnhancedSecurityAnalysis {
 }
 
 interface WCAGComplianceAnalysis {
+  /**
+   * Set ONLY when the analysis could not be completed. Its presence means the
+   * numbers below describe nothing and must not be reported as findings.
+   *
+   * A scan that cannot analyse must not answer "compliant" (a plausible default
+   * dressed as knowledge) and must not answer "Non-compliant" either — that is a
+   * claim about the customer's site that nobody measured. It says it failed.
+   */
+  analysisFailed?: string;
   complianceLevel: 'AAA' | 'AA' | 'A' | 'Non-compliant';
   wcagVersion: '2.2';
   overallScore: number;
@@ -1509,7 +1518,53 @@ export class CompleteWebTester {
   // HELPER METHODS - WCAG Accessibility
   // ==========================================================================
 
+  /**
+   * THE CLASS FIX, not just the instance.
+   *
+   * analyzeWCAG is one link in a chain of analysers, and a throw anywhere in it
+   * aborted the entire scan — the caller turned it into a synthetic
+   * overall:'fail' result and still answered HTTP 200, so a crashed scanner was
+   * indistinguishable from a site with problems.
+   *
+   * One unsupported selector must cost one section, not the whole report.
+   */
   private analyzeWCAG($: cheerio.CheerioAPI): WCAGComplianceAnalysis {
+    try {
+      return this.analyzeWCAGInner($);
+    } catch (error: unknown) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error('WCAG analysis failed; reporting it as not analysed:', reason);
+      // EVERY field, and NO `as` cast. The first version of this fallback
+      // returned a partial object and used `as WCAGComplianceAnalysis` to
+      // silence the compiler; a consumer then read .inputAssistance.formLabels
+      // off undefined and killed the scan anyway — the guard against a crash,
+      // crashing. test/proof.webscan.ts caught it. The cast was what hid it, so
+      // there is no cast here: if a field is added to the interface, this stops
+      // compiling, which is the correct outcome.
+      return {
+        analysisFailed: reason,
+        complianceLevel: 'Non-compliant',
+        wcagVersion: '2.2',
+        overallScore: 0,
+        colorContrast: { passed: 0, failed: 0, ratio: 0, meetsAA: false, meetsAAA: false },
+        textAlternatives: { imagesWithAlt: 0, imagesWithoutAlt: 0, altTextQuality: 'poor' },
+        adaptable: { semanticHTML: false, landmarkRegions: 0, headingStructure: false },
+        keyboardAccessible: { focusIndicators: false, tabIndex: false, skipLinks: false, keyboardTrap: false },
+        navigation: { multipleWays: false, linkPurpose: false, descriptiveLinks: 0, genericLinks: 0 },
+        readable: { lang: false, langValid: false, readingLevel: 'unknown' },
+        predictable: { consistentNavigation: false, consistentIdentification: false },
+        inputAssistance: { formLabels: false, formErrors: false, formErrorSuggestions: false },
+        compatible: { validHTML: false, ariaValid: false, parsing: false },
+        scores: { perceivable: 0, operable: 0, understandable: 0, robust: 0 },
+        criticalIssues: 0,
+        seriousIssues: 0,
+        moderateIssues: 0,
+        minorIssues: 0,
+      };
+    }
+  }
+
+  private analyzeWCAGInner($: cheerio.CheerioAPI): WCAGComplianceAnalysis {
     // Text alternatives
     const images = $('img');
     const imagesWithAlt = images.filter((_, el) => !!$(el).attr('alt')).length;
@@ -1530,7 +1585,19 @@ export class CompleteWebTester {
     const headingStructure = this.checkHeadingHierarchy($);
 
     // Keyboard accessibility
-    const focusIndicators = $('*:focus').length > 0 || $('[tabindex]').length > 0;
+    // WAS: $('*:focus').length > 0 || $('[tabindex]').length > 0
+    //
+    // Cheerio parses static HTML. :focus is a DYNAMIC pseudo-class that exists
+    // only in a live browser, so css-select threw "Unknown pseudo-class :focus"
+    // — killing every web scan, including one of example.com.
+    //
+    // It could never have worked even if it parsed: nothing holds focus in a
+    // document that was never rendered, so `*:focus` matches nothing, always.
+    // A broken expression of a check that cannot be done server-side. Detecting
+    // real focus indicators needs computed styles from a rendered page.
+    //
+    // [tabindex] is the half that means something statically, and it stays.
+    const focusIndicators = $('[tabindex]').length > 0;
     const tabIndex = $('[tabindex]:not([tabindex="-1"])').length > 0;
     const skipLinks = $('a[href^="#"]').filter((_, el) => {
       const text = $(el).text().toLowerCase();
