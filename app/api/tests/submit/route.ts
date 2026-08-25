@@ -4,6 +4,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/api/central';
+import {
+  claimFreeScan,
+  releaseFreeScan,
+  createEntitlementClient,
+  supabaseEntitlementStore,
+  type EntitlementStore,
+} from '@/lib/entitlements';
 import { CompleteWebTester } from '@/lib/complete-web-testing';
 import { CompleteDocumentTester } from '@/lib/complete-document-testing';
 import { CompleteApiTester } from '@/lib/complete-api-testing';
@@ -71,6 +78,39 @@ export async function POST(req: NextRequest) {
     // Generate test ID
     const testId = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const target = targetUrl || (file ? file.name : 'uploaded-file');
+
+    // ==================================================
+    // CLAIM THE FREE SCAN — BEFORE ANY WORK IS DISPATCHED
+    // ==================================================
+    //
+    // The insert comes first and the primary-key collision IS the refusal, so a
+    // duplicate request is rejected before a tester runs. Reading first and
+    // recording afterwards would bound the bookkeeping and not the cost: ten
+    // concurrent requests would all read "no row", all ten scans would run, and
+    // nine inserts would collide after we had already paid for them.
+    //
+    // EVERY scan is the free one today. There is no paid tier to bypass this
+    // check yet, so this is one scan per account, full stop. When the ladder
+    // exists, a paid scan skips this block entirely — it is not free, so it does
+    // not consume the free claim.
+    const store: EntitlementStore = supabaseEntitlementStore(createEntitlementClient());
+    const claim = await claimFreeScan(store, caller.id, testId, target);
+    if (!claim.ok) {
+      // 429, not 402. Payment Required would tell the caller to pay, and there
+      // is nothing to pay for — no tier, no checkout, and /pricing is a 404.
+      // Pointing at a purchase that does not exist is the fictional-balance
+      // defect on the selling side.
+      return NextResponse.json(
+        {
+          error: 'Free scan already used',
+          message:
+            'This account has already used its one free scan. Paid tiers are not '
+            + 'available yet — when they are, this is where they will apply.',
+          contact: 'royhenderson@craudiovizai.com',
+        },
+        { status: 429 },
+      );
+    }
 
     // Initialize progress
     testProgressStore.set(testId, {
@@ -146,7 +186,22 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
       console.error(`❌ Real testing failed for ${testId}:`, error);
-      
+
+      // The scan failed, so the free scan was not delivered. Give the claim back
+      // rather than charging the user for our failure. Scoped to this testId, so
+      // it can only remove the claim this request made.
+      //
+      // Best effort, deliberately: if the release itself fails we log and carry
+      // on, because the caller's problem is the failed scan and masking it with a
+      // release error would help nobody. And it cannot reach a hard crash or a
+      // platform timeout — those leave the claim consumed, which is a support
+      // case, not something this handler can catch.
+      try {
+        await releaseFreeScan(store, caller.id, testId);
+      } catch (releaseError: any) {
+        console.error(`⚠️ Could not release the free-scan claim for ${testId}:`, releaseError);
+      }
+
       testResults = {
         overall: 'fail' as const,
         score: 0,
@@ -178,20 +233,31 @@ export async function POST(req: NextRequest) {
       startedAt: new Date(startTime).toISOString(),
       completedAt: new Date(endTime).toISOString(),
       duration: `${(duration / 1000).toFixed(2)}s`,
-      results: {
-        ...testResults,
-        javariAutoFix: {
-          available: testResults.issues?.length > 0,
-          confidence: testResults.issues?.length > 0 ? 90 : 0,
-          message: testResults.issues?.length > 0 
-            ? `Javari AI can automatically fix ${testResults.issues.length} issue(s) with 90% confidence`
-            : 'No issues found to fix'
-        }
-      },
-      report: {
-        url: `/reports/${testId}`,
-        downloadUrl: `/api/reports/${testId}/download`
-      }
+      // javariAutoFix REMOVED — it advertised a capability that does not exist.
+      //
+      // It reported `confidence: 90` as a hardcoded literal, with `available`
+      // set to "this scan found at least one issue", and told the user "Javari
+      // AI can automatically fix N issue(s) with 90% confidence". Nothing
+      // measured that 90, and there is no autofix implementation for it to
+      // describe — the `autoFixable` flags in lib/modules/checks are a separate,
+      // real, per-issue property and are overwhelmingly false.
+      //
+      // The dashboard rendered it as a heading and an "Apply Fixes" button with
+      // no onClick handler, so the button did nothing when pressed.
+      //
+      // This is the defect that paused production — a number the product cannot
+      // back — still live on the endpoint being metered. It is removed rather
+      // than corrected, because there is no correct value for the confidence of
+      // a feature that does not exist. It comes back when autofix does.
+      results: testResults,
+      // `report` REMOVED — it advertised two routes that do not exist.
+      //
+      // url pointed at /reports/{id} and downloadUrl at
+      // /api/reports/{id}/download. Neither route exists in app/, both 404, and
+      // nothing consumed either field. Handing a caller a link to a report that
+      // was never written is an unverifiable claim, the same class as the
+      // fabricated autofix confidence removed above and the /pricing link the
+      // 429 refuses to emit. They come back when the routes do.
     };
 
     testProgressStore.delete(testId);

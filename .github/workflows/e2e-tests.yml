@@ -86,6 +86,12 @@ jobs:
           # authentication, which is the state the banner exists to announce.
           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          # The free-scan meter needs this twice over: the app under test uses it
+          # to record a claim (and THROWS without it rather than running
+          # unmetered), and free-scan-meter.spec.ts uses it to delete the claim
+          # afterwards. The entitlement is one row per account forever, so a test
+          # that consumed it without cleaning up would pass exactly once.
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
