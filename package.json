@@ -11,7 +11,7 @@
     "typecheck": "./node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
-    "@craudioviz/platform-sdk": "git+https://github.com/CR-AudioViz-AI/platform-sdk.git",
+    "@craudioviz/platform-sdk": "github:CR-AudioViz-AI/platform-sdk#main",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.5",
     "cheerio": "^1.0.0-rc.12",
@@ -31,6 +31,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@types/node": "20.11.5",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
@@ -39,7 +40,6 @@
     "eslint-config-next": "14.2.5",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.3.3",
-    "@playwright/test": "1.62.1"
+    "typescript": "^5.3.3"
   }
 }

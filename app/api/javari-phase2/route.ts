@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { secretKey, supabaseUrl } from "@craudioviz/platform-sdk";
 
 const JAVARI_URL = 'https://javari-ai-git-main-roy-hendersons-projects-1d3d5e94.vercel.app/api/javari/router';
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wcyvnkmepimmohexdfzd.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SUPABASE_URL = supabaseUrl();
+const SUPABASE_KEY = secretKey();
 
 export async function POST() {
   const results: any[] = [];
