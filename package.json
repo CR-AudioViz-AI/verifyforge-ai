@@ -17,7 +17,7 @@
     "cheerio": "^1.0.0-rc.12",
     "docx": "^8.5.0",
     "framer-motion": "^11.0.0",
-    "jspdf": "^2.5.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.577.0",
     "next": "14.2.35",
     "openai": "^4.67.3",
