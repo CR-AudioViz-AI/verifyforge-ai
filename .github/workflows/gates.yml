@@ -33,7 +33,21 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
+      # 2026-08-27: `npm install`, not `npm ci`, and the reason is a real defect
+      # rather than a preference.
+      #
+      # @craudioviz/platform-sdk is a GIT dependency declared in package.json and
+      # ABSENT FROM package-lock.json. npm ci refuses outright — "Missing:
+      # @craudioviz/platform-sdk@1.0.0 from lock file" — because ci exists to
+      # install exactly what the lockfile says and the lockfile is wrong.
+      #
+      # The lockfile needs regenerating with the SDK in it. Until then, npm ci
+      # cannot run here, and pretending otherwise would mean this app has no
+      # typecheck at all — which is the state it was already in.
+      #
+      # Tracked, not hidden: regenerate the lockfile, then switch this back to
+      # npm ci for reproducible installs.
+      - run: npm install --no-audit --no-fund
       # The PINNED binary. Bare `npx tsc` resolves TypeScript 6 rather than the
       # pinned ^5 and fails on syntax this codebase relies on.
       - run: ./node_modules/.bin/tsc --noEmit
