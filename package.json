@@ -11,7 +11,7 @@
     "typecheck": "./node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
-    "@craudioviz/platform-sdk": "github:CR-AudioViz-AI/platform-sdk#main",
+    "@craudioviz/platform-sdk": "git+https://github.com/CR-AudioViz-AI/platform-sdk.git",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.5",
     "cheerio": "^1.0.0-rc.12",
