@@ -16,6 +16,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 // From supabase-config, NOT from lib/supabase: that module builds a client at
 // import time and would make this offline-capable module require a WebSocket.
 import { SUPABASE_URL } from '@/lib/supabase-config';
+import { secretKey } from "@craudioviz/platform-sdk";
 
 /** Postgres unique_violation. The collision we are relying on, by number. */
 const UNIQUE_VIOLATION = '23505';
@@ -56,7 +57,7 @@ export interface EntitlementStore {
  * knowledge. This one refuses instead.
  */
 export function createEntitlementClient(): SupabaseClient {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = secretKey();
   if (serviceKey === undefined || serviceKey === '') {
     throw new Error(
       'SUPABASE_SERVICE_ROLE_KEY is not set. The free-scan meter cannot record a '

@@ -12,6 +12,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { secretKey } from "@craudioviz/platform-sdk";
 
 // Re-export admin utilities from central services
 export { isAdmin, shouldChargeCredits, ADMIN_EMAILS, CentralServices } from './central-services';
@@ -80,7 +81,7 @@ export function createSupabaseBrowserClient(): SupabaseClient {
 
 // Server client for API routes
 export function createSupabaseServerClient(): SupabaseClient {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = secretKey();
   if (!serviceKey) {
     console.warn('SUPABASE_SERVICE_ROLE_KEY not set, using anon key');
     return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

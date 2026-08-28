@@ -1,3 +1,4 @@
+import { publishableKey, supabaseUrl } from "@craudioviz/platform-sdk";
 // lib/supabase-config.ts — the connection constants, and nothing that runs.
 //
 // WHY THIS FILE EXISTS. lib/supabase.ts creates a client at MODULE SCOPE:
@@ -21,8 +22,8 @@
 //
 // CR AudioViz AI, LLC · EIN 39-3646201 · 2026-08-25
 
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+export const SUPABASE_URL = supabaseUrl()
   || 'https://kteobfyferrukqeolofj.supabase.co';
 
-export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+export const SUPABASE_ANON_KEY = publishableKey()
   || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0ZW9iZnlmZXJydWtxZW9sb2ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIxOTcyNjYsImV4cCI6MjA3NzU1NzI2Nn0.uy-jlF_z6qVb8qogsNyGDLHqT4HhmdRhLrW7zPv3qhY';
