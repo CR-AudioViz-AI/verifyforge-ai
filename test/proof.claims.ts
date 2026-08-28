@@ -54,7 +54,20 @@ async function main() {
     check('found redirect loops on live site', findings.length >= 1, `${findings.length} findings`);
     check('each finding has >=5 evidence paths', findings.every(f => f.evidence.length >= 5),
       findings[0] ? `${findings[0].evidence.length} paths` : 'none');
-    check('severity is BLOCKER for loops', findings.every(f => f.severity === 'BLOCKER'));
+    // 2026-08-27: was `findings.every(f => f.severity === 'BLOCKER')`, which
+    // asserted that a THIRD-PARTY SITE would always produce a redirect LOOP.
+    //
+    // docs.claude.com now 301s to platform.claude.com/docs/docs/en/home — note the
+    // doubled /docs/docs/. That is a real redirect defect and correctly rated HIGH,
+    // because the module reserves BLOCKER for a loop or a protocol downgrade. The
+    // module is right; the test encoded a site's state as if it were a rule.
+    //
+    // Now asserts the RULE: BLOCKER exactly when the title says loop, HIGH
+    // otherwise. That holds whatever the external site does next.
+    check('severity matches the defect: BLOCKER for loops, HIGH otherwise',
+      findings.every(f =>
+        /loop/i.test(f.title) ? f.severity === 'BLOCKER' : f.severity === 'HIGH'),
+      findings.map(f => `${f.severity}`).join(', ') || 'none');
   }
 
   console.log('\n=== CLAIM 4: hollow-response does NOT false-positive on real content (live) ===');
