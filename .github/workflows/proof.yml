@@ -46,16 +46,15 @@ jobs:
         # The engine compiles clean under strict + noUncheckedIndexedAccess +
         # exactOptionalPropertyTypes. This fails the build if that ever regresses.
         run: npx tsc --noEmit -p tsconfig.engine.json
-        run: npx # 2026-08-27: THE APP WAS NEVER TYPECHECKED — only tsconfig.engine.json was.
-        run: npx # So app/, components/ and every SDK import went unchecked, and the shared
-        run: npx # platform-sdk did not compile at all: 24 errors including an auth guard that
-        run: npx # was always false, so every app using the shared header rendered signed-out
-        run: npx # for a signed-in customer.
-        run: npx #
-        run: npx # The engine check stays — it is faster and fails first on the pattern maths.
-        run: npx # This adds the app on top rather than replacing it.
-        run: npx - name: Typecheck the app
-        run: npx   run: ./node_modules/.bin/tsc --noEmit
+
+      # 2026-08-27: THE APP WAS NEVER TYPECHECKED — only tsconfig.engine.json was,
+      # so app/, components/ and every platform-sdk import went unchecked. The SDK
+      # had 24 type errors including an auth guard that was always false, so every
+      # app using the shared header rendered signed-out for a signed-in customer.
+      #
+      # The engine check stays: it is faster and fails first on the pattern maths.
+      - name: Typecheck the app
+        run: ./node_modules/.bin/tsc --noEmit
 
       - name: Prove — offline claims
         # No EXTERNAL network: lifecycle, credential deletion, SARIF interop,
