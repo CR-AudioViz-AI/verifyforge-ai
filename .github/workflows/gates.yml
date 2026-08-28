@@ -1,0 +1,39 @@
+# Gates — javari-verify
+#
+# 2026-08-27: this repo had NO TYPECHECK. Next disables type checking in the build
+# and nothing checked types outside it, so a type error shipped to a live domain
+# with nothing between it and production. javari-verify is the app every other one
+# copies, and it is also the harness used to test the others — it must be the
+# strictest repo in the fleet, not the loosest.
+#
+# COST CONTROLS, learned the hard way on core (2026-08-26):
+#   - PR + manual only. A push trigger doubles every run.
+#   - timeout-minutes is mandatory. Seven untimed jobs once ran to GitHub's
+#     360-minute default: 42 hours from one stuck run.
+#   - concurrency cancels superseded runs instead of multiplying them.
+#   - npm ci with a cache, never bare `npm install`.
+name: Gates
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      # The PINNED binary. Bare `npx tsc` resolves TypeScript 6 rather than the
+      # pinned ^5 and fails on syntax this codebase relies on.
+      - run: ./node_modules/.bin/tsc --noEmit
