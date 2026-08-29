@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { signIn, accessToken, ownerIdFromToken, CAN_SIGN_IN } from './support/sign-in';
+// 2026-08-27: signIn() -> signInAs(). /auth has NO EMAIL FIELD — the page was
+// rewritten to remove 197 lines of local auth, because an app consumes core OAuth
+// and never implements its own. The old helper filled fields that do not exist.
+//
+// accessToken and ownerIdFromToken stay in sign-in.ts — they read the token out of
+// localStorage and decode its `sub`, and neither depends on how the session got
+// there. Only the sign-in step changed.
+import { accessToken, ownerIdFromToken } from './support/sign-in';
+import { signInAs, CAN_SIGN_IN } from './support/session';
 
 /**
  * e2e/free-scan-meter.spec.ts — the cost gate, exercised end to end.
