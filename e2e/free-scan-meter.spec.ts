@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { signIn, accessToken, ownerIdFromToken, HAVE_CREDENTIALS } from './support/sign-in';
+import { signIn, accessToken, ownerIdFromToken, CAN_SIGN_IN } from './support/sign-in';
 
 /**
  * e2e/free-scan-meter.spec.ts — the cost gate, exercised end to end.
@@ -24,7 +24,7 @@ const SUPABASE_URL = process.env['NEXT_PUBLIC_SUPABASE_URL']
   ?? 'https://kteobfyferrukqeolofj.supabase.co';
 
 const HAVE_SERVICE_KEY = typeof SERVICE_KEY === 'string' && SERVICE_KEY.length > 0;
-const CAN_RUN = HAVE_CREDENTIALS && HAVE_SERVICE_KEY;
+const CAN_RUN = CAN_SIGN_IN && HAVE_SERVICE_KEY;
 
 // LOUD, at collection time. A silent skip on the cost gate is the failure mode
 // this whole suite exists to refuse.
@@ -34,7 +34,7 @@ if (!CAN_RUN) {
   '################################################################\n' +
       '#  FREE-SCAN METER E2E DID NOT RUN                             #\n' +
       '#                                                              #\n' +
-      `#  credentials: ${HAVE_CREDENTIALS ? 'present' : 'MISSING '}   service key: ${HAVE_SERVICE_KEY ? 'present' : 'MISSING '}       #\n` +
+      `#  credentials: ${CAN_SIGN_IN ? 'present' : 'MISSING '}   service key: ${HAVE_SERVICE_KEY ? 'present' : 'MISSING '}       #\n` +
       '#  The one-free-scan cost gate was NOT exercised. This suite   #\n' +
       '#  passing proves NOTHING about metering.                      #\n' +
   '################################################################\n',
@@ -95,7 +95,7 @@ test.describe('The free scan is metered', () => {
   test('a second scan is refused, and the first one claimed the row', async ({ page, request }) => {
     test.setTimeout(180_000); // the first request runs a real scan
 
-    await signIn(page);
+    await signInAs(page);
     const token = await accessToken(page);
     expect(token, 'sign-in should yield an access token').not.toBeNull();
     const ownerId = ownerIdFromToken(token as string);
@@ -159,7 +159,7 @@ test.describe('The free scan is metered', () => {
   });
 
   test('a malformed request does not burn the free scan', async ({ page, request }) => {
-    await signIn(page);
+    await signInAs(page);
     const token = await accessToken(page);
     const ownerId = ownerIdFromToken(token as string);
 
