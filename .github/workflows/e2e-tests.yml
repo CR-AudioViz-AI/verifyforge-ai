@@ -86,6 +86,16 @@ jobs:
       - name: Run E2E tests
         run: npx playwright test
         env:
+          # 2026-08-27: NEXT_PUBLIC_SUPABASE_URL was never passed, so the app
+          # server crashed at boot — "Error: supabaseUrl is required" — Playwright's
+          # webServer never came up, and EVERY test failed. The secrets that WERE
+          # passed all resolved; the missing one simply was not in the list.
+          #
+          # Not a secret. The URL and the anon key are public by design and are
+          # inlined into the browser bundle by Next. Filing a public value as a
+          # secret hides which values actually matter, so they are repo VARIABLES.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:3000' }}
           # The auth proof needs a real account. Absent these, e2e/auth.spec.ts
           # skips and says so loudly at collection time — it never passes
