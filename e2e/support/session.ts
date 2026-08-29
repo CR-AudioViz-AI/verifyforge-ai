@@ -29,14 +29,20 @@
 
 import { type Page } from '@playwright/test';
 
-const URL = process.env['NEXT_PUBLIC_SUPABASE_URL'];
+// 2026-08-27: SUPABASE_URL, not URL. Naming it URL SHADOWED THE GLOBAL URL
+// CONSTRUCTOR, so `new URL(...)` in storageKey() resolved to a string and the
+// typecheck reported 'This expression is not constructable'.
+//
+// It would have compiled if storageKey had used string splitting instead — a
+// latent shadow waiting for the first person to reach for the global.
+const SUPABASE_URL = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const ANON = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'];
 const SRK = process.env['SUPABASE_SERVICE_ROLE_KEY'];
 const EMAIL = process.env['E2E_TEST_EMAIL'];
 
 /** True when CI has everything needed to mint a session. Specs skip rather than fail. */
 export const CAN_SIGN_IN =
-  Boolean(URL) && Boolean(ANON) && Boolean(SRK) && Boolean(EMAIL);
+  Boolean(SUPABASE_URL) && Boolean(ANON) && Boolean(SRK) && Boolean(EMAIL);
 
 interface Session {
   access_token: string;
@@ -62,7 +68,7 @@ export async function mintSession(): Promise<Session> {
     );
   }
 
-  const linkRes = await fetch(`${URL}/auth/v1/admin/generate_link`, {
+  const linkRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
     method: 'POST',
     headers: {
       apikey: SRK as string,
@@ -88,7 +94,7 @@ export async function mintSession(): Promise<Session> {
   // verify is a PUBLIC endpoint and takes the anon key. Sending the service-role key
   // here is rejected, and would be wrong anyway — this step is what a real user's
   // browser performs.
-  const verifyRes = await fetch(`${URL}/auth/v1/verify`, {
+  const verifyRes = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
     method: 'POST',
     headers: { apikey: ANON as string, 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'magiclink', token_hash: tokenHash }),
@@ -105,7 +111,8 @@ export async function mintSession(): Promise<Session> {
 
 /** The storage key supabase-js v2 uses: sb-<project-ref>-auth-token. */
 function storageKey(): string {
-  const ref = new URL(URL as string).hostname.split('.')[0];
+  const ref = new URL(SUPABASE_URL as string).hostname.split('.')[0];
+  if (!ref) throw new Error('could not derive the project ref from NEXT_PUBLIC_SUPABASE_URL');
   return `sb-${ref}-auth-token`;
 }
 
