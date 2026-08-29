@@ -1,5 +1,18 @@
 import { test, expect } from '@playwright/test';
-import { signIn, EMAIL, PASSWORD, HAVE_CREDENTIALS } from './support/sign-in';
+// 2026-08-27: signIn() -> signInAs(). /auth has NO EMAIL FIELD — the page was
+// rewritten to remove 197 lines of local auth, because an app consumes core OAuth
+// and never implements its own. The old helper filled fields that do not exist and
+// timed out after 15s, failing every signed-in test.
+//
+// signInAs mints a REAL session through the Supabase admin API and injects it with
+// addInitScript. Real tokens, signed by the project, every RLS policy applying as
+// it would to a human. A faked session would prove nothing about authorization,
+// which is the thing this product sells.
+//
+// CAN_SIGN_IN replaces CAN_SIGN_IN: the requirement is no longer a password,
+// it is the admin key plus the project URL.
+import { EMAIL } from './support/sign-in';
+import { signInAs, CAN_SIGN_IN } from './support/session';
 
 /**
  * e2e/auth.spec.ts — proof that authentication actually works.
@@ -18,7 +31,7 @@ import { signIn, EMAIL, PASSWORD, HAVE_CREDENTIALS } from './support/sign-in';
  * CR AudioViz AI, LLC · EIN 39-3646201 · 2026-08-24
  */
 
-// EMAIL / PASSWORD / HAVE_CREDENTIALS / signIn now live in ./support/sign-in,
+// EMAIL / PASSWORD / CAN_SIGN_IN / signIn now live in ./support/sign-in,
 // so the meter spec and this one cannot drift apart.
 
 /**
@@ -33,7 +46,7 @@ import { signIn, EMAIL, PASSWORD, HAVE_CREDENTIALS } from './support/sign-in';
 // never runs its hooks, so a banner inside beforeAll would be silent in exactly
 // the case it exists to announce — the guard failing the same way the thing it
 // guards against failed.
-if (!HAVE_CREDENTIALS) {
+if (!CAN_SIGN_IN) {
   console.error(
   '\n' +
   '################################################################\n' +
@@ -48,10 +61,10 @@ if (!HAVE_CREDENTIALS) {
 }
 
 test.describe('Authentication', () => {
-  test.skip(!HAVE_CREDENTIALS, 'AUTH E2E DID NOT RUN — E2E_TEST_EMAIL / E2E_TEST_PASSWORD unset.');
+  test.skip(!CAN_SIGN_IN, 'AUTH E2E DID NOT RUN — SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL / E2E_TEST_EMAIL unset.');
 
   test('a real sign-in establishes a session that survives a reload', async ({ page }) => {
-    await signIn(page);
+    await signInAs(page);
 
     // The dashboard is gated on a verified session, so arriving is itself the
     // assertion: the previous localStorage flag could not have got us here.
@@ -88,7 +101,7 @@ test.describe('Authentication', () => {
   });
 
   test('the API accepts the same request with a bearer token', async ({ page, request }) => {
-    await signIn(page);
+    await signInAs(page);
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
 
     const token = await page.evaluate(() => {
