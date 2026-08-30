@@ -1,1 +1,12 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","github":{"autoAlias":false}}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "github": {
+    "autoAlias": false
+  },
+  "crons": [
+    {
+      "path": "/api/cron/scan-worker",
+      "schedule": "*/2 * * * *"
+    }
+  ]
+}
