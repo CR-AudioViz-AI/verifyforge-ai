@@ -28,6 +28,41 @@ export const runtime = 'nodejs';
 
 const TERMINAL = new Set(['succeeded', 'failed', 'cancelled']);
 
+/**
+ * The row shape this route reads.
+ *
+ * 2026-08-30: declared explicitly because createServiceClient is built WITHOUT
+ * generated Database types, so every .select() resolves to a generic row and each
+ * property access is TS2339 — nineteen of them in this file.
+ *
+ * Written out rather than cast to `any` or `never`. This is the contract the
+ * status endpoint promises its callers, and a cast would have silenced the
+ * compiler while leaving the shape undocumented for the next person. Every field
+ * here exists on jvf_runs, checked against information_schema.
+ */
+interface RunRow {
+  run_id: string;
+  status: string;
+  verdict: string | null;
+  queued_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  duration_ms: number | null;
+  attempts: number | null;
+  error: string | null;
+  progress: unknown;
+  target_id: string | null;
+  access_tier: string | null;
+  modules_run: number | null;
+  modules_concluded: number | null;
+  concluded_module_ids: string[] | null;
+  subjects_examined: number | null;
+  requests_issued: number | null;
+  blind_spots: string[] | null;
+  credits_charged: number | null;
+  report: unknown;
+}
+
 /** GET /api/scan/status?run_id=… */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const owner = await requireOwner(request);
@@ -52,7 +87,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // the only thing standing between a guessed run_id and another company's
     // vulnerability report.
     .eq('owner_id', owner.userId)
-    .maybeSingle();
+    .maybeSingle<RunRow>();
 
   if (error) {
     console.error('[scan/status] read failed', error.message);
