@@ -196,12 +196,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         completed_at: completedAt.toISOString(),
         duration_ms: completedAt.getTime() - startedAt.getTime(),
         credits_charged: actual,
-        modules_run: outcome.run.modulesRun ?? null,
-        modules_concluded: outcome.run.modulesConcluded ?? null,
-        concluded_module_ids: outcome.run.concludedModuleIds ?? null,
-        subjects_examined: outcome.run.subjectsExamined ?? null,
-        requests_issued: outcome.run.requestsIssued ?? null,
-        blind_spots: outcome.run.blindSpots ?? null,
+        // 2026-08-30: derived from the REAL ScanRun shape, which I read from
+        // lib/modules/registry.ts after guessing six field names that do not
+        // exist. ScanRun carries results, skipped, creditsCharged and
+        // sessionBlindSpots — not the modulesRun/blindSpots names I assumed.
+        //
+        // `skipped` is first-class in that interface, described there as "a
+        // first-class part of the output, not an omission" — so modules that ran
+        // and modules that could not are counted separately here rather than
+        // collapsed into one number that would overstate coverage.
+        modules_run: outcome.run.results.length + outcome.run.skipped.length,
+        modules_concluded: outcome.run.results.length,
+        concluded_module_ids: outcome.run.results.map((r) => r.ruleId),
+        subjects_examined: outcome.run.results.length,
+        requests_issued: plan.discovery.requestsIssued,
+        // Both sources: what the SESSION could not reach, plus every module that
+        // did not execute and why. A blind spot the customer cannot see is the
+        // same as no blind spot at all.
+        blind_spots: [
+          ...outcome.run.sessionBlindSpots,
+          ...outcome.run.skipped.map((s) => `${s.moduleId}: ${s.reason}`),
+        ],
         report: {
           markdown: renderMarkdown(outcome.report) + '\n\n' + renderChangeSection(outcome),
           structured: outcome.report,
