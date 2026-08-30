@@ -207,7 +207,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // collapsed into one number that would overstate coverage.
         modules_run: outcome.run.results.length + outcome.run.skipped.length,
         modules_concluded: outcome.run.results.length,
-        concluded_module_ids: outcome.run.results.map((r) => r.ruleId),
+        // moduleId, not ruleId. CheckResult declares moduleId, moduleVersion,
+        // targetId, accessTier, outcome and its own blindSpots — read from
+        // lib/modules/contract.ts after guessing wrong a fifth time.
+        concluded_module_ids: outcome.run.results.map((r) => r.moduleId),
         subjects_examined: outcome.run.results.length,
         requests_issued: plan.discovery.requestsIssued,
         // Both sources: what the SESSION could not reach, plus every module that
