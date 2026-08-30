@@ -16,13 +16,29 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { plan } from '@/lib/engine/scan';
 import { buildRegistry } from '@/lib/registry-instance';
-import { resolveTarget, resolveProfile, jsonError } from '@/lib/api/resolve';
+import { resolveTarget, resolveProfile, requireOwner, jsonError } from '@/lib/api/resolve';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 200;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // 2026-08-30: THIS ROUTE WAS UNAUTHENTICATED while /api/scan/execute next door
+  // called requireOwner.
+  //
+  // Planning is not a read. It CRAWLS THE ADDRESS IT IS GIVEN — a real scan of
+  // craudiovizai.com discovered 380 routes and took 181 seconds of our compute. An
+  // anonymous caller could point that at any host on the internet and our
+  // infrastructure would do the crawling, with our IP on every request.
+  //
+  // That is server-side request forgery with a bill attached, and it is the same
+  // ungated-route class closed across 36 core routes on 2026-08-29.
+  //
+  // requireOwner, matching /execute exactly. Planning is also what prices the scan,
+  // so an unauthenticated planner meant credit estimates for nobody's account.
+  const owner = await requireOwner(request);
+  if (owner.kind === 'error') return jsonError(owner.status, owner.message);
+
   let body: unknown;
   try {
     body = await request.json();
