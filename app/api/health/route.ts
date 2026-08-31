@@ -43,10 +43,18 @@ export async function GET() {
     checks["supabase"] = "not_configured";
   } else {
     try {
-      // A HEAD against the REST root: no table name, so this works in every repo
-      // regardless of schema, and returns nothing that could leak data.
-      const r = await fetch(`${url}/rest/v1/`, {
-        method: "HEAD",
+      // /auth/v1/health — GoTrue's own liveness endpoint.
+      //
+      // 2026-08-30, SECOND PASS: the first version did a HEAD against /rest/v1/ and
+      // returned error:401 on EVERY app. PostgREST's root requires more than an
+      // anon apikey, so a healthy platform reported degraded across 133 apps. I
+      // caught it because the answer was identical everywhere, and a check that
+      // fails uniformly is measuring itself rather than the thing.
+      //
+      // This endpoint answers 200 with the apikey alone, needs NO table, and so
+      // works in every repo regardless of schema — verified against the live
+      // project before shipping this time.
+      const r = await fetch(`${url}/auth/v1/health`, {
         headers: { apikey: key },
         // Bounded. A health check that can hang is a health check that will, and
         // an uptime monitor waiting 30 seconds reports an outage that is really a
