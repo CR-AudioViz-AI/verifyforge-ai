@@ -54,7 +54,19 @@ export async function GET() {
       // This endpoint answers 200 with the apikey alone, needs NO table, and so
       // works in every repo regardless of schema — verified against the live
       // project before shipping this time.
-      const r = await fetch(`${url}/auth/v1/health`, {
+      // 2026-08-31, THIRD REVISION. This probed /auth/v1/health, and when Supabase's
+      // GoTrue returned 503 upstream, EVERY APP REPORTED DEGRADED AT ONCE — while
+      // their databases were fine and every page served 200.
+      //
+      // That was my design fault, not Supabase's. I chose that endpoint because it
+      // needed no table and worked in every repo, and in doing so made one subsystem
+      // a single point of failure for the whole fleet's reporting. Almost none of
+      // these apps touch GoTrue on a normal request; they depend on PostgREST.
+      //
+      // platform_modules is a shared platform table readable with the app's own
+      // publishable key, so this exercises the real dependency chain: HTTP, auth on
+      // the key, PostgREST, and the database behind it.
+      const r = await fetch(`${url}/rest/v1/platform_modules?select=id&limit=1`, {
         headers: { apikey: key },
         // Bounded. A health check that can hang is a health check that will, and
         // an uptime monitor waiting 30 seconds reports an outage that is really a
