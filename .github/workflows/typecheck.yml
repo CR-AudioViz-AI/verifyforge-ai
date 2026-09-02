@@ -1,0 +1,74 @@
+# Typecheck — added 2026-08-27
+#
+# This repo shipped with BOTH checks disabled in next.config.js
+# (typescript.ignoreBuildErrors and eslint.ignoreDuringBuilds) and NO typecheck
+# anywhere in CI. Nothing checked types before a deploy reached a live domain.
+#
+# Fifteen satellites were in that state. core compensates with a nightly
+# workflow; these had nothing.
+#
+# WHY IT MATTERS HERE SPECIFICALLY: platform-sdk itself did not compile until
+# 2026-08-27 — 24 type errors including an auth guard that was ALWAYS FALSE, so
+# every app using the shared header rendered signed-out for a signed-in
+# customer. That went unseen for months precisely because no consumer typechecked.
+#
+# COST CONTROLS, learned when the Actions budget froze twice in one day:
+#   PR + manual only; a push trigger doubles every run
+#   timeout-minutes is mandatory — seven untimed jobs once ran to the 360-minute
+#     default, 42 hours from one stuck run
+#   concurrency cancels superseded runs instead of multiplying them
+#   npm ci with a cache, never bare npm install
+name: Typecheck
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: typecheck-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # 2026-08-27: NO CACHE AND npm install, because THIS REPO HAS NO LOCKFILE.
+      # setup-node's cache:'npm' fails outright without one ("Dependencies lock
+      # file is not found"), and npm ci refuses for the same reason.
+      #
+      # Nine of the fifteen satellites have no package-lock.json at all. That is a
+      # bigger problem than the missing typecheck: every install resolves fresh,
+      # so two builds of the same commit can ship different dependency trees, and
+      # a compromised transitive package arrives silently.
+      #
+      # Committing a lockfile per repo is the real fix and is tracked separately.
+      # Until then this runs unpinned rather than not running.
+      - run: npm install --no-audit --no-fund
+      # The PINNED binary. Bare `npx tsc` resolves TypeScript 6 rather than the
+      # pinned v5 and fails on syntax these codebases rely on — that cost core
+      # 38-54 minutes per CI run until it was found.
+      # 2026-08-27: exclude test configs and Deno edge functions via tsconfig,
+      # NOT via --excludeFiles. That flag is ACCEPTED by tsc and does nothing here
+      # — it filters files named on the command line, not the tsconfig `include`
+      # set. I tried it first and the excluded file was still reported.
+      #
+      # Two real cases this covers:
+      #   playwright.config.ts imports @playwright/test in repos that do not
+      #     depend on it — a config for a package that is not installed
+      #   supabase/functions/** are DENO, not Node. They use Deno globals and URL
+      #     imports and will never typecheck under a Next tsconfig.
+      - name: Typecheck (excluding Deno functions and test configs)
+        run: |
+          node -e "
+            const fs=require('fs');
+            const c=JSON.parse(fs.readFileSync('tsconfig.json','utf8').replace(/\/\/.*$/gm,''));
+            c.exclude=[...new Set([...(c.exclude||[]),'node_modules','supabase/functions/**','*.config.ts','playwright.config.ts','e2e/**','tests/**','**/*.test.ts','**/*.spec.ts'])];
+            fs.writeFileSync('tsconfig.ci.json',JSON.stringify(c,null,2));
+          "
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.ci.json
