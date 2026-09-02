@@ -15,9 +15,6 @@ import { CompleteWebTester } from '@/lib/complete-web-testing';
 import { CompleteDocumentTester } from '@/lib/complete-document-testing';
 import { CompleteApiTester } from '@/lib/complete-api-testing';
 import { CompleteAiBotTester } from '@/lib/complete-ai-bot-testing';
-import { CompleteGameTester } from '@/lib/complete-game-testing';
-import { CompleteMobileTester } from '@/lib/complete-mobile-testing';
-import { CompleteAvatarTester } from '@/lib/complete-avatar-testing';
 import { CompleteToolTester } from '@/lib/complete-tool-testing';
 
 // 2026-08-24: the in-memory credit counter was REMOVED, not replaced.
@@ -154,23 +151,20 @@ export async function POST(req: NextRequest) {
           testResults = await aiTester.testAiBot(targetUrl);
           break;
 
-        case 'game':
-          if (!file) throw new Error('File required for game testing');
-          const gameTester = new CompleteGameTester();
-          testResults = await gameTester.testGame(file);
-          break;
-
-        case 'mobile':
-          if (!file) throw new Error('File required for mobile testing');
-          const mobileTester = new CompleteMobileTester();
-          testResults = await mobileTester.testMobileApp(file);
-          break;
-
-        case 'avatar':
-          if (!file) throw new Error('File required for avatar testing');
-          const avatarTester = new CompleteAvatarTester();
-          testResults = await avatarTester.testAvatar(file);
-          break;
+          // 2026-09-02: game, mobile and avatar testers DELETED, not disabled.
+          // They made no network call and contained no `await`, reporting
+          // measuredFps = 58, startupTime = 1500, memoryUsageMB = 85,
+          // crashRate = 0.5 and polygonCount = 25000 from constants written into
+          // the source. Real replacements live in lib/modules/checks/ and take a
+          // URL rather than an upload; this path fails loudly until that is wired.
+          case 'game':
+          case 'mobile':
+          case 'avatar':
+            throw new Error(
+              `${testType} testing is being rebuilt. The previous implementation reported hardcoded ` +
+                'metrics rather than measuring anything and was removed on 2026-09-02. Real replacements ' +
+                'exist (model-geometry, game-payload, mobile-readiness) but take a URL, not a file upload.',
+            );
 
         case 'tool':
           if (!targetUrl) throw new Error('URL required for tool testing');
