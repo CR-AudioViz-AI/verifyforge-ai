@@ -20,6 +20,7 @@ import { gamePayloadCheck } from './modules/checks/game-payload';
 import { modelGeometryCheck } from './modules/checks/model-geometry';
 import { aiSafetyCheck } from './modules/checks/ai-safety';
 import { accessibilityCheck } from './modules/checks/accessibility';
+import { securityPostureCheck } from './modules/checks/security-posture';
 
 export function buildRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
@@ -52,5 +53,6 @@ export function buildRegistry(): ModuleRegistry {
   // render: contrast is computed, tap-target size comes from the box model, and
   // an element hidden by CSS is not in the accessibility tree at all.
   registry.register(accessibilityCheck);
+  registry.register(securityPostureCheck);
   return registry;
 }
