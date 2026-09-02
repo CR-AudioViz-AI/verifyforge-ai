@@ -75,34 +75,43 @@ export async function POST(request: NextRequest) {
         break
       }
 
-      case 'game': {
-        if (!file) {
-          return NextResponse.json({ error: 'File is required for game testing' }, { status: 400 })
-        }
-        const { CompleteGameTester } = await import('@/lib/complete-game-testing')
-        const tester = new CompleteGameTester()
-        results = await tester.testGame(file)
-        break
-      }
-
-      case 'mobile': {
-        if (!file) {
-          return NextResponse.json({ error: 'File is required for mobile testing' }, { status: 400 })
-        }
-        const { CompleteMobileTester } = await import('@/lib/complete-mobile-testing')
-        const tester = new CompleteMobileTester()
-        results = await tester.testMobileApp(file)
-        break
-      }
-
+      // 2026-09-02: these three testers were DELETED, not disabled.
+      //
+      // complete-game-testing.ts, complete-mobile-testing.ts and
+      // complete-avatar-testing.ts made no network call and contained no `await`.
+      // They reported measuredFps = 58, startupTime = 1500, memoryUsageMB = 85,
+      // crashRate = 0.5 and polygonCount = 25000 from constants written into the
+      // source, ran them through real thresholds, and returned a scored pass/fail
+      // report. Every game ever scanned got the same "Below target FPS: 58"
+      // warning, because 58 was a literal.
+      //
+      // Their replacements are real modules in lib/modules/checks/ —
+      // model-geometry parses the actual GLB and counts triangles from accessors,
+      // game-payload measures real transfer weight per asset, mobile-readiness
+      // fetches as a phone and measures viewport, blocking resources and zoom.
+      //
+      // This endpoint returns 501 rather than routing to them because it takes an
+      // uploaded FILE and the new modules take a URL. Wiring a file upload to a
+      // URL-based module would be a different lie. An honest 501 naming the
+      // replacement is the correct answer until that path is built.
+      case 'game':
+      case 'mobile':
       case 'avatar': {
-        if (!file) {
-          return NextResponse.json({ error: 'File is required for avatar testing' }, { status: 400 })
-        }
-        const { CompleteAvatarTester } = await import('@/lib/complete-avatar-testing')
-        const tester = new CompleteAvatarTester()
-        results = await tester.testAvatar(file)
-        break
+        return NextResponse.json(
+          {
+            error: 'This test type is being rebuilt',
+            detail:
+              'The previous implementation reported hardcoded metrics rather than measuring anything, and was removed on 2026-09-02.',
+            replacement:
+              testType === 'avatar'
+                ? 'model-geometry — parses a real glTF/GLB and counts triangles, textures, joints and animations from the file'
+                : testType === 'game'
+                  ? 'game-payload — measures real transfer weight, renderer, engine and frame-loop style from the live game URL'
+                  : 'mobile-readiness — fetches as a phone and measures viewport, render-blocking weight, zoom permission and PWA installability',
+            note: 'The replacements take a URL. File-upload support for them is not built yet.',
+          },
+          { status: 501 },
+        )
       }
 
       case 'tool': {
