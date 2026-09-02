@@ -275,6 +275,8 @@ export const modelGeometryCheck: CheckModule = {
         status: 'inconclusive',
         reason:
           'The file was fetched but is not valid glTF or GLB — the glTF magic was absent and the body did not parse as JSON.',
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 1, notes: 'Fetched but unparseable; nothing measured.' },
       };
     }
 
@@ -424,34 +426,34 @@ export const modelGeometryCheck: CheckModule = {
         autoFixable: false,
       });
     }
-
-    const summaryEvidence: Evidence[] = [
-      measured('triangles', triangles, 'count', 'Summed from glTF accessor counts per primitive.'),
-      measured('meshes', meshes.length, 'count', 'Length of the glTF meshes array.'),
-      measured('materials', materialCount, 'count', 'Length of the glTF materials array.'),
-      measured('textures', textureCount, 'count', 'Length of the glTF textures array.'),
-      measured('joints', jointCount, 'count', 'Summed from glTF skins.'),
-      measured('animations', animationCount, 'count', 'Length of the glTF animations array.'),
-      measured('nodes', nodeCount, 'count', 'Length of the glTF nodes array.'),
-      measured('file_size', byteLength, 'bytes', 'Content length of the fetched body.'),
-    ];
+    // The measurements above are attached to findings. A passing check reports
+    // its numbers in checked.notes rather than manufacturing a finding to carry
+    // them — a Finding means something is wrong, and a clean result has nothing
+    // wrong to report.
 
     if (findings.length === 0) {
       return {
         status: 'pass',
-        summary:
-          `${triangles.toLocaleString()} triangles, ${meshes.length} mesh(es), ${materialCount} material(s), ` +
+        findings: [],
+        checked: {
+          subjectsExamined: 1,
+          requestsIssued: 1,
+          notes: `${triangles.toLocaleString()} triangles, ${meshes.length} mesh(es), ${materialCount} material(s), ` +
           `${textureCount} texture(s), ${jointCount} joint(s), ${animationCount} animation(s), ` +
           `${(byteLength / 1024).toFixed(0)} KB. Within mobile budget.`,
-        evidence: summaryEvidence as [Evidence, ...Evidence[]],
+        },
       };
     }
 
     return {
-      status: 'fail',
-      findings: findings as [Finding, ...Finding[]],
-      summary: `${findings.length} budget issue(s) in a model of ${triangles.toLocaleString()} triangles.`,
-    };
+        status: 'fail',
+        findings: findings as [Finding, ...Finding[]],
+        checked: {
+          subjectsExamined: 1,
+          requestsIssued: 1,
+          notes: `${findings.length} budget issue(s) in a model of ${triangles.toLocaleString()} triangles.`,
+        },
+      };
   },
 };
 
