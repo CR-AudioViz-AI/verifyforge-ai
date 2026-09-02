@@ -135,6 +135,22 @@ export class SupabaseHistoryStore implements HistoryStore {
         verdict: snapshot.findings.length > 0 ? 'DEFECTS_FOUND' : 'CLEAR',
         concluded_module_ids: snapshot.concludedModuleIds,
         report: { findings: snapshot.findings },
+        // 2026-09-03: STATUS IS REQUIRED HERE, and its absence was poisoning the
+        // work queue.
+        //
+        // jvf_runs.status defaults to 'queued'. This upsert records a run that has
+        // ALREADY COMPLETED, so every history write appeared to the worker as new
+        // work — with no request payload, because a history record has none.
+        //
+        // The worker takes oldest-first, so these sat at the head of the queue and
+        // burned one invocation each failing as 'Malformed queued row'. Two
+        // ecosystem sweeps stalled behind 64 and then 16 of them, and clearing them
+        // by hand achieved nothing because every completed scan created another.
+        //
+        // A history record and a unit of work are different things sharing one
+        // table. Setting the status is the minimum fix; separate tables is the
+        // honest one, and worth doing before this pattern finds a second way to bite.
+        status: 'succeeded',
       },
       { onConflict: 'run_id' },
     );
