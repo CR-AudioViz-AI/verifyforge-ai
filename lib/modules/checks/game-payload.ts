@@ -152,7 +152,12 @@ export const gamePayloadCheck: CheckModule = {
   async run(context: CheckContext): Promise<CheckOutcome> {
     const url = String(context.inputs?.['gameUrl'] ?? context.target?.address ?? '');
     if (!url) {
-      return { status: 'inconclusive', reason: 'No game URL was supplied, so nothing was fetched.' };
+      return {
+        status: 'inconclusive',
+        reason: 'No game URL was supplied, so nothing was fetched.',
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 0, notes: 'Nothing was examined.' },
+      };
     }
 
     let html: string;
@@ -343,29 +348,32 @@ export const gamePayloadCheck: CheckModule = {
       (wasmBytes ? `, WASM ${(wasmBytes / 1024 / 1024).toFixed(2)} MB` : '') +
       (scriptBytes ? `, JS ${(scriptBytes / 1024).toFixed(0)} KB` : '') +
       `. Frame loop: ${usesRaf ? 'requestAnimationFrame' : usesTimerLoop ? 'timer' : 'not detected'}.`;
-
-    const summaryEvidence: Evidence[] = [
-      measure('total_transfer', totalBytes, 'bytes', 'Document body plus per-asset HEAD/Range content-length.'),
-      measure('wasm_bytes', wasmBytes, 'bytes', 'Summed content-length of .wasm and .unityweb assets.'),
-      measure('script_bytes', scriptBytes, 'bytes', 'Summed content-length of referenced scripts.'),
-      measure('assets_referenced', refs.size, 'count', 'Distinct asset URLs referenced by the served document.'),
-      measure('assets_measured', measuredAssets.length, 'count', 'Assets returning a usable content-length.'),
-      httpEvidence,
-    ];
+    // The measurements above are attached to findings. A passing check reports
+    // its numbers in checked.notes rather than manufacturing a finding to carry
+    // them — a Finding means something is wrong, and a clean result has nothing
+    // wrong to report.
 
     if (findings.length === 0) {
       return {
         status: 'pass',
-        summary,
-        evidence: summaryEvidence as [Evidence, ...Evidence[]],
+        findings: [],
+        checked: {
+          subjectsExamined: targets.length,
+          requestsIssued: 1 + targets.length,
+          notes: summary,
+        },
       };
     }
 
     return {
-      status: 'fail',
-      findings: findings as [Finding, ...Finding[]],
-      summary,
-    };
+        status: 'fail',
+        findings: findings as [Finding, ...Finding[]],
+        checked: {
+          subjectsExamined: targets.length,
+          requestsIssued: 1 + targets.length,
+          notes: summary,
+        },
+      };
   },
 };
 
