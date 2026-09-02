@@ -18,6 +18,7 @@ import { runtimePerformanceCheck } from './modules/checks/runtime-performance';
 import { mobileReadinessCheck } from './modules/checks/mobile-readiness';
 import { gamePayloadCheck } from './modules/checks/game-payload';
 import { modelGeometryCheck } from './modules/checks/model-geometry';
+import { aiSafetyCheck } from './modules/checks/ai-safety';
 
 export function buildRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
@@ -38,5 +39,11 @@ export function buildRegistry(): ModuleRegistry {
   registry.register(mobileReadinessCheck);
   registry.register(gamePayloadCheck);
   registry.register(modelGeometryCheck);
+
+  // 2026-09-02: ai_model was a declared target kind with ZERO checks against it,
+  // while every other kind had at least one. That gap mattered most here, because
+  // this platform ships AI in every app it builds — we were selling a scanner that
+  // could not scan our own core product.
+  registry.register(aiSafetyCheck);
   return registry;
 }
