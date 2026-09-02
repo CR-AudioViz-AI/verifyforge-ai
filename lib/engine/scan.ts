@@ -73,9 +73,36 @@ export async function plan(
       ? clustering.routesToTest
       : discovery.routes.map((route) => route.url);
 
+  // 2026-09-02: SEPARATE WHAT THE SITE PUBLISHES FROM WHAT WE INFERRED.
+  //
+  // An ecosystem sweep produced 376 "redirect chain ends in HTTP 404" findings
+  // across 35 sites. Many were real broken navigation — /login and /contact in a
+  // footer pointing at pages that were never built. Many were not: /credits/balance,
+  // /payments/portal and /support/tickets are CENTRAL API fragments. The satellite
+  // calls `${CENTRAL_API}/credits/balance`, the bundle extractor recovered the path
+  // portion, and the crawler probed it against the satellite's own host where it
+  // correctly does not exist.
+  //
+  // Provenance was thrown away here: every route flattened to a bare URL, so a link
+  // the site publishes and a string we guessed at looked identical to the module. A
+  // finding about a published link is a fact; a finding about an inferred path is a
+  // guess wearing the same severity badge, and mixing them is how a report earns a
+  // 90% false positive rate.
+  const publishedUrls = new Set(
+    discovery.routes.filter((r) => r.source !== 'bundle').map((r) => r.url),
+  );
+  const testedPublished = testUrls.filter((u) => publishedUrls.has(u));
+  const testedInferred = testUrls.filter((u) => !publishedUrls.has(u));
+
   const resolved: ScanProfile = {
     ...profile,
-    inputs: { ...profile.inputs, routes: testUrls.join('\n') },
+    inputs: {
+      ...profile.inputs,
+      // Only what the site publishes. A defect asserted here is defensible.
+      routes: testedPublished.join('\n'),
+      // Recovered from bundles. Available for coverage, never for an assertion.
+      inferredRoutes: testedInferred.join('\n'),
+    },
   };
 
   const estimate = registry.estimate(resolved, target);
