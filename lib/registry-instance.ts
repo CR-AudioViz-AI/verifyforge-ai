@@ -19,6 +19,7 @@ import { mobileReadinessCheck } from './modules/checks/mobile-readiness';
 import { gamePayloadCheck } from './modules/checks/game-payload';
 import { modelGeometryCheck } from './modules/checks/model-geometry';
 import { aiSafetyCheck } from './modules/checks/ai-safety';
+import { accessibilityCheck } from './modules/checks/accessibility';
 
 export function buildRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
@@ -45,5 +46,11 @@ export function buildRegistry(): ModuleRegistry {
   // this platform ships AI in every app it builds — we were selling a scanner that
   // could not scan our own core product.
   registry.register(aiSafetyCheck);
+
+  // ACCESSIBILITY was a declared category with no check behind it. It runs in a
+  // real browser because almost every meaningful a11y defect only exists after
+  // render: contrast is computed, tap-target size comes from the box model, and
+  // an element hidden by CSS is not in the accessibility tree at all.
+  registry.register(accessibilityCheck);
   return registry;
 }
