@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import CheckSelector, { type SelectableCheck } from '@/components/CheckSelector';
 import {
   METRICS,
   bandsText,
@@ -145,6 +146,36 @@ export default function ScanPage(): React.ReactElement {
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef<number>(0);
+  const [catalog, setCatalog] = useState<SelectableCheck[]>([]);
+  const [selectedChecks, setSelectedChecks] = useState<string[]>([]);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  // The catalog is fetched from the live registry rather than hardcoded here.
+  // A UI listing a check that is not registered would let someone select it, run
+  // a scan, and receive a clean result for a check that never executed.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/checks', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { checks: SelectableCheck[] };
+        if (!cancelled) setCatalog(data.checks ?? []);
+      } catch (e) {
+        if (!cancelled) {
+          // Said out loud rather than silently rendering an empty list, which
+          // would look like a product with no checks.
+          setCatalogError(
+            `The check catalog could not be loaded (${e instanceof Error ? e.message : 'network error'}). ` +
+              'A scan started now would run the default set.',
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Elapsed time, shown throughout. A scan that takes four minutes with a
   // visible clock reads as working; the same scan with a silent spinner reads
@@ -207,12 +238,26 @@ export default function ScanPage(): React.ReactElement {
       return;
     }
 
+    if (selectedChecks.length === 0) {
+      // The API rejects an empty moduleIds array. Saying so here saves a round
+      // trip to be told about a choice the user can see on this screen.
+      setError('Select at least one check. A scan with none would return a clean result having tested nothing.');
+      return;
+    }
+
     setBusy(true);
     try {
       const res = await fetch('/api/scan/queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: normalised }),
+        // The shape the API actually validates: a target object and a profile
+        // carrying moduleIds. My first version sent { url, checks } and would
+        // have been rejected with 'Missing "target" object' on every scan —
+        // caught by reading lib/api/resolve.ts rather than assuming.
+        body: JSON.stringify({
+          target: { kind: 'web_property', address: normalised, accessTier: 'public' },
+          profile: { id: 'custom', moduleIds: selectedChecks, inputs: { url: normalised } },
+        }),
       });
       const data = (await res.json()) as { ok?: boolean; runId?: string; error?: string };
 
@@ -244,7 +289,7 @@ export default function ScanPage(): React.ReactElement {
     } finally {
       setBusy(false);
     }
-  }, [url]);
+  }, [url, selectedChecks]);
 
   const running = Boolean(runId) && !status?.done;
   const measurements = status?.measurements ?? {};
@@ -321,6 +366,46 @@ export default function ScanPage(): React.ReactElement {
           >
             {error}
           </div>
+        ) : null}
+
+        {catalogError ? (
+          <div
+            role="alert"
+            style={{
+              background: 'rgba(245,158,11,0.08)',
+              border: '1px solid rgba(245,158,11,0.3)',
+              borderRadius: 8,
+              padding: '12px 14px',
+              fontSize: 13,
+              color: 'var(--brand-amber-400)',
+              marginTop: 12,
+              lineHeight: 1.6,
+            }}
+          >
+            {catalogError}
+          </div>
+        ) : null}
+
+        {catalog.length > 0 && !running ? (
+          <section style={{ marginTop: 32 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--brand-slate-200)', margin: '0 0 6px' }}>
+              What to check
+            </h2>
+            <p
+              style={{
+                fontSize: 13.5,
+                color: 'var(--brand-slate-400)',
+                margin: '0 0 20px',
+                maxWidth: 620,
+                lineHeight: 1.65,
+              }}
+            >
+              Every check says what it finds, how often it is wrong, and what it cannot catch. The
+              defaults are our opinion about what most people should run — you have more context
+              about your own risk than we do, so all of it stays one click away.
+            </p>
+            <CheckSelector checks={catalog} onChange={setSelectedChecks} />
+          </section>
         ) : null}
 
         {status ? (
