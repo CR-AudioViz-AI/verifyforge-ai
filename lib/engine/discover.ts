@@ -163,6 +163,25 @@ function extractRoutesFromBundle(source: string): string[] {
     if (/\.(js|css|png|jpe?g|svg|webp|ico|woff2?|map|json|txt|xml)$/i.test(candidate)) continue;
     if (/^\/(_next|static|assets|api|node_modules)\b/i.test(candidate)) continue;
     if (candidate.includes('//')) continue;
+
+    // 2026-09-02: REQUIRE A REAL WORD SOMEWHERE IN THE PATH.
+    //
+    // The comment above called this "deliberately conservative" and it was not.
+    // {1,60} accepted /a/i and /a/b — minified variable names, not routes — and a
+    // scan of javariverify.com reported both as HIGH severity "redirect chain ends
+    // in HTTP 404". Verify invented two routes and then flagged itself for not
+    // serving them.
+    //
+    // That is precisely the failure the industry complains about: 71-90% false
+    // positive rates and a gate that cries wolf until people stop reading it. Two
+    // invented findings out of ten on our own first real scan.
+    //
+    // A minified bundle is mostly one- and two-character identifiers, so the
+    // discriminator is a segment of three or more characters. /scan, /api/v1/users
+    // and /a/b/checkout keep a real word; /a/i, /a/b and /g/x do not.
+    const segments = candidate.split('/').filter((part) => part.length > 0);
+    if (!segments.some((part) => part.length >= 3)) continue;
+
     found.add(candidate);
   }
   return [...found];
