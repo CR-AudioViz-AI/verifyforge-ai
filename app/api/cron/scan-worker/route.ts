@@ -29,6 +29,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { execute, renderChangeSection, type ScanPlan } from '@/lib/engine/scan';
+import { discover } from '@/lib/engine/discover';
 import { renderMarkdown } from '@/lib/modules/report';
 import { buildRegistry } from '@/lib/registry-instance';
 import { getHistoryStore } from '@/lib/store/history-instance';
@@ -186,18 +187,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, runId: job.run_id, error: 'Insufficient credits.' });
   }
 
+  // 2026-09-02: RUN DISCOVERY. This block was hardcoded empty.
+  //
+  // lib/engine/discover.ts was fully implemented — crawler, sitemap, robots
+  // handling, per-target rate limiting — and no caller ever invoked it. With an
+  // empty routes array every route-based module reported "Missing required
+  // input: routes" and did not conclude.
+  //
+  // The first end-to-end run proved it: 3 modules requested, 1 concluded.
+  // hollow-response and redirect-integrity — two of the four original checks and
+  // the ones this product was built around — could not run at all.
+  const discovery = await discover(req.target);
+
   const plan: ScanPlan = {
     target: req.target,
     profile: req.profile,
-    discovery: {
-      routes: [],
-      bySource: { entry: 0, sitemap: 0, link: 0, bundle: 0 },
-      excludedByRobots: [],
-      unreachable: [],
-      requestsIssued: 0,
-      budgetExhausted: false,
-      completeness: 'complete',
-    },
+    discovery,
     credits: estimate.totalCredits,
     estimatedRuntimeMs: estimate.totalRuntimeMs,
     willNotRun: estimate.unrunnable,
