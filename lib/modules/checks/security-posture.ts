@@ -213,6 +213,40 @@ export const securityPostureCheck: CheckModule = {
 
     for (const rule of HEADER_RULES) {
       const value = headers[rule.header];
+        // 2026-09-03: REPORT-ONLY IS A REAL STATE, NOT AN ABSENCE.
+        //
+        // A CSP shipped as Content-Security-Policy-Report-Only enforces nothing,
+        // so calling it present would be a lie. But treating it as identical to
+        // never having tried is also wrong: it is the documented first step of a
+        // rollout, and this module's own recommendedFix says to deploy in
+        // Report-Only first so you learn what breaks before it breaks.
+        //
+        // Reporting the deliberate intermediate step at the same severity as
+        // doing nothing punishes the team that followed the advice.
+        const reportOnly =
+          rule.header === 'content-security-policy'
+            ? headers['content-security-policy-report-only']
+            : undefined;
+        if (!value && reportOnly) {
+          findings.push({
+            ruleId: 'security.header.csp-report-only',
+            category: 'SECURITY',
+            severity: 'MEDIUM',
+            title: 'Content-Security-Policy is Report-Only and does not enforce',
+            description:
+              'A policy is present as Content-Security-Policy-Report-Only. The browser reports ' +
+              'violations and blocks nothing, so an injected script still executes. This is the ' +
+              'correct first step of a CSP rollout and it is not the finished state.',
+            subject: origin,
+            evidence: [{ kind: 'http_response', url: origin, method: 'GET', status, bodyExcerpt: '', headers }],
+            recommendedFix:
+              'Watch the violation reports until they are quiet, correct the policy for anything ' +
+              'legitimate it blocked, then rename the header to Content-Security-Policy to enforce.',
+            fingerprint: fingerprint('security.header.csp-report-only', origin),
+            autoFixable: false,
+          });
+          continue;
+        }
       if (!value) {
         findings.push({
           ruleId: `security.header.${rule.header}`,
