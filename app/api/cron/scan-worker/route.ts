@@ -28,8 +28,7 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { execute, renderChangeSection, type ScanPlan } from '@/lib/engine/scan';
-import { discover } from '@/lib/engine/discover';
+import { execute, plan, renderChangeSection } from '@/lib/engine/scan';
 import { renderMarkdown } from '@/lib/modules/report';
 import { buildRegistry } from '@/lib/registry-instance';
 import { getHistoryStore } from '@/lib/store/history-instance';
@@ -169,9 +168,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   const registry = buildRegistry();
+
+  // 2026-09-02: use plan(), which is what actually assembles a runnable scan.
+  //
+  // This route hand-built its ScanPlan with an empty discovery block, so every
+  // route-based module reported "Missing required input: routes" and did not
+  // conclude. Wiring discover() in directly was not enough — the routes still
+  // never reached the modules.
+  //
+  // plan() already does all of it: crawls the surface, clusters routes into
+  // templates so a large site is tested by representative rather than by
+  // hammering every URL, injects them as profile.inputs.routes, and prices by
+  // the work actually performed. Two of the four original checks could not run
+  // at all because this route reimplemented a third of it and skipped the rest.
+  const plan_ = await plan(req.target, req.profile, registry);
+
   const estimate = registry.estimate(req.profile, req.target);
 
-  const charge = await reserveAndCharge(job.owner_id, estimate.totalCredits, VERIFY_INTENTS.scan);
+  const charge = await reserveAndCharge(job.owner_id, plan_.credits, VERIFY_INTENTS.scan);
   if (!charge.ok) {
     // Not a retry. Credits do not appear because a worker tried again, and burning
     // two more attempts to say the same thing wastes the queue.
@@ -180,40 +194,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .update({
         status: 'failed',
         completed_at: new Date().toISOString(),
-        error: `Insufficient credits: this scan costs ${estimate.totalCredits}, balance is ${charge.balance}. Nothing was charged.`,
+        error: `Insufficient credits: this scan costs ${plan_.credits}, balance is ${charge.balance}. Nothing was charged.`,
         attempts: MAX_ATTEMPTS,
       })
       .eq('run_id', job.run_id);
     return NextResponse.json({ ok: false, runId: job.run_id, error: 'Insufficient credits.' });
   }
 
-  // 2026-09-02: RUN DISCOVERY. This block was hardcoded empty.
-  //
-  // lib/engine/discover.ts was fully implemented — crawler, sitemap, robots
-  // handling, per-target rate limiting — and no caller ever invoked it. With an
-  // empty routes array every route-based module reported "Missing required
-  // input: routes" and did not conclude.
-  //
-  // The first end-to-end run proved it: 3 modules requested, 1 concluded.
-  // hollow-response and redirect-integrity — two of the four original checks and
-  // the ones this product was built around — could not run at all.
-  const discovery = await discover(req.target);
 
-  const plan: ScanPlan = {
-    target: req.target,
-    profile: req.profile,
-    discovery,
-    credits: estimate.totalCredits,
-    estimatedRuntimeMs: estimate.totalRuntimeMs,
-    willNotRun: estimate.unrunnable,
-    summary: '',
-    clustering: null,
-  };
 
   try {
     const history = getHistoryStore();
     const outcome = await execute(
-      plan,
+        plan_,
       registry,
       () => {
         /* the runner's masking sink owns structured logs; nothing echoed here */
@@ -224,7 +217,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
 
     const actual = outcome.run.creditsCharged;
-    if (estimate.totalCredits - actual > 0 && charge.refund !== null) {
+    if (plan_.credits - actual > 0 && charge.refund !== null) {
       // Reconcile down to what the scan actually cost, exactly as /execute does.
       // A customer approved an estimate; they pay the real number or less.
       await charge.refund();
@@ -256,7 +249,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // lib/modules/contract.ts after guessing wrong a fifth time.
         concluded_module_ids: outcome.run.results.map((r) => r.moduleId),
         subjects_examined: outcome.run.results.length,
-        requests_issued: plan.discovery.requestsIssued,
+        requests_issued: plan_.discovery.requestsIssued,
         // Both sources: what the SESSION could not reach, plus every module that
         // did not execute and why. A blind spot the customer cannot see is the
         // same as no blind spot at all.
