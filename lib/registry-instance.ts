@@ -14,6 +14,10 @@ import { hollowResponseModule } from './modules/checks/hollow-response';
 import { redirectIntegrityModule } from './modules/checks/redirect-integrity';
 import { idorAccessModule } from './modules/checks/idor-access';
 import { schemaColumnsModule } from './modules/checks/schema-columns';
+import { runtimePerformanceCheck } from './modules/checks/runtime-performance';
+import { mobileReadinessCheck } from './modules/checks/mobile-readiness';
+import { gamePayloadCheck } from './modules/checks/game-payload';
+import { modelGeometryCheck } from './modules/checks/model-geometry';
 
 export function buildRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
@@ -21,5 +25,18 @@ export function buildRegistry(): ModuleRegistry {
   registry.register(redirectIntegrityModule);
   registry.register(idorAccessModule);
   registry.register(schemaColumnsModule);
+
+  // 2026-09-02: four modules existed and were UNREACHABLE. A check that is not
+  // registered here cannot be planned, cannot be estimated, and cannot run — the
+  // file compiles, the tests pass, and the capability does not exist.
+  //
+  // That is the same defect class as a route with no caller, and it is the reason
+  // the registry is the single place modules are declared rather than being
+  // discovered by directory scan: a missing line here is visible, a missing file
+  // in a glob is not.
+  registry.register(runtimePerformanceCheck);
+  registry.register(mobileReadinessCheck);
+  registry.register(gamePayloadCheck);
+  registry.register(modelGeometryCheck);
   return registry;
 }
