@@ -128,6 +128,45 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, runId: job.run_id, error: 'Malformed queued row.' });
   }
 
+  // 2026-09-02: validate the SHAPE before executing.
+  //
+  // A queued row whose target was missing `authorization` threw
+  // "Cannot read properties of undefined (reading 'kind')" from deep inside
+  // permitsIntrusive, retried three times, and stored that TypeError as the
+  // customer-visible error. Three attempts to produce a stack trace nobody can
+  // act on.
+  //
+  // Not retried: a malformed payload is still malformed on the third attempt.
+  const t = req.target as unknown as Record<string, unknown> | null | undefined;
+  const pf = req.profile as unknown as Record<string, unknown> | null | undefined;
+  const shapeProblem =
+    t === undefined || t === null
+      ? 'request.target is missing'
+      : typeof t['kind'] !== 'string'
+        ? 'request.target.kind is missing'
+        : typeof t['address'] !== 'string'
+          ? 'request.target.address is missing'
+          : t['authorization'] === undefined || t['authorization'] === null
+            ? 'request.target.authorization is missing - use { "kind": "none" } for an unowned target'
+            : pf === undefined || pf === null
+              ? 'request.profile is missing'
+              : !Array.isArray(pf['moduleIds']) || (pf['moduleIds'] as unknown[]).length === 0
+                ? 'request.profile.moduleIds is empty - a scan with no modules would report a clean result having tested nothing'
+                : null;
+
+  if (shapeProblem !== null) {
+    await sb
+      .from('jvf_runs')
+      .update({
+        status: 'failed',
+        completed_at: new Date().toISOString(),
+        error: `Queued request is malformed: ${shapeProblem}.`,
+        attempts: MAX_ATTEMPTS,
+      })
+      .eq('run_id', job.run_id);
+    return NextResponse.json({ ok: false, runId: job.run_id, error: shapeProblem }, { status: 400 });
+  }
+
   const registry = buildRegistry();
   const estimate = registry.estimate(req.profile, req.target);
 
