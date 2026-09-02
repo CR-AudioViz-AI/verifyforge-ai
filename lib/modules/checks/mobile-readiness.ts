@@ -98,7 +98,7 @@ export const mobileReadinessCheck: CheckModule = {
     'Tap target sizes set in external stylesheets. Only sizing expressed in the served markup is visible here.',
   ],
 
-  supportedTargetKinds: ['url'],
+  supportedTargetKinds: ['web_property', 'mobile_app'],
   minimumAccessTier: 'public',
   intrusive: false,
 
@@ -112,7 +112,7 @@ export const mobileReadinessCheck: CheckModule = {
   requiresBrowser: false,
 
   async run(context: CheckContext): Promise<CheckOutcome> {
-    const url = String(context.inputs?.['url'] ?? context.target?.url ?? '');
+    const url = String(context.inputs?.['url'] ?? context.target?.address ?? '');
     if (!url) {
       return { status: 'inconclusive', reason: 'No URL was supplied, so nothing was fetched.' };
     }
@@ -132,9 +132,11 @@ export const mobileReadinessCheck: CheckModule = {
       });
       if (!res.ok) {
         return {
-          status: 'inconclusive',
-          reason: `The page could not be fetched as a phone: HTTP ${res.status}. Nothing was analysed.`,
-        };
+        status: 'inconclusive',
+        reason: `The page could not be fetched as a phone: HTTP ${res.status}. Nothing was analysed.`,
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 0, notes: 'Nothing was examined.' },
+      };
       }
       html = await res.text();
     } catch (e) {
@@ -143,6 +145,8 @@ export const mobileReadinessCheck: CheckModule = {
         reason: `The page could not be fetched as a phone: ${
           e instanceof Error ? e.message : 'network error'
         }. Nothing was analysed.`,
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 1, notes: 'Fetch failed; nothing measured.' },
       };
     }
 
