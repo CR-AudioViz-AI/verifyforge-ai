@@ -174,6 +174,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Broken object-level authorisation is consistently ranked the top API risk by OWASP, and DAST guidance in 2026 highlights it as the class static analysis cannot reach because it requires request sequences with actual user roles.',
   },
   {
+    moduleId: 'secrets.exposed',
+    groupId: 'secrets',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Every pattern is anchored on a documented vendor key format, and each candidate is filtered by entropy and surrounding context before it is reported. JWTs are decoded rather than guessed at, so a publishable anon key is never reported and a service-role key always is.',
+    },
+    whyItMatters:
+      'A credential in a served asset is not a risk, it is a disclosure — anyone who loaded the page already has it, and rotation is the only remedy. This scans what was SERVED rather than what is in the repository, which is a different set: a key becomes public the moment someone prefixes it NEXT_PUBLIC_, and a key deleted from source months ago is still in a deployed bundle until that bundle is replaced.',
+    evidence:
+      'Source maps are fetched explicitly because they re-expose the original source, including the comments explaining what each key is for, and they are served silently and almost never audited.',
+  },
+  {
     moduleId: 'ai.safety',
     groupId: 'ai',
     defaultOn: true,
@@ -342,7 +356,7 @@ export const PRESETS: readonly Preset[] = [
     id: 'ai-product',
     label: 'AI product',
     forWhen: 'Your product exposes a model or an agent to users.',
-    moduleIds: ['ai.safety', 'idor-access', 'hollow-response'],
+    moduleIds: ['ai.safety', 'idor-access', 'hollow-response', 'secrets.exposed'],
   },
   {
     id: 'accessibility',

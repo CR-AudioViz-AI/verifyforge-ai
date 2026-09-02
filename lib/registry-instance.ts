@@ -20,6 +20,7 @@ import { gamePayloadCheck } from './modules/checks/game-payload';
 import { modelGeometryCheck } from './modules/checks/model-geometry';
 import { aiSafetyCheck } from './modules/checks/ai-safety';
 import { accessibilityCheck } from './modules/checks/accessibility';
+import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
 export function buildRegistry(): ModuleRegistry {
@@ -53,6 +54,13 @@ export function buildRegistry(): ModuleRegistry {
   // render: contrast is computed, tap-target size comes from the box model, and
   // an element hidden by CSS is not in the accessibility tree at all.
   registry.register(accessibilityCheck);
+
+  // The `secrets` group had no check behind it. This one scans what was SERVED
+  // rather than what is in the repo — a different set, and the difference is
+  // where the damage is: a key becomes public the moment someone prefixes it
+  // NEXT_PUBLIC_, and a key deleted from source months ago is still in a
+  // deployed bundle until that bundle is replaced.
+  registry.register(exposedSecretsCheck);
   registry.register(securityPostureCheck);
   return registry;
 }
