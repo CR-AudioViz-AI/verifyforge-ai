@@ -231,7 +231,14 @@ export function renderMarkdown(report: ScanReport): string {
   lines.push(`\`${report.targetAddress}\` · ${report.generatedAt}`);
   lines.push('');
 
-  if (report.verdict !== 'CLEAR' || report.didNotRun.length > 0) {
+  // Rendered on EVERY verdict including CLEAR. A clean scan with no stated limits
+  // reads as a guarantee, and that is the single most dangerous way to misread
+  // this report.
+  if (
+    report.verdict !== 'CLEAR' ||
+    report.didNotRun.length > 0 ||
+    report.blindSpots.length > 0
+  ) {
     lines.push('## What this scan did not cover');
     lines.push('');
     if (report.didNotRun.length > 0) {
@@ -247,6 +254,32 @@ export function renderMarkdown(report: ScanReport): string {
       lines.push('');
       for (const item of report.didNotConclude) {
         lines.push(`- \`${item.moduleId}\` — ${item.reason}`);
+      }
+      lines.push('');
+    }
+
+    // 2026-09-02: THE BLIND SPOTS WERE COLLECTED AND NEVER PRINTED.
+    //
+    // This section rendered only didNotRun and didNotConclude, so on a scan where
+    // every check ran successfully the heading appeared with nothing under it —
+    // empty at exactly the moment it matters most, because that is the scan a
+    // reader is most likely to mistake for proof of safety.
+    //
+    // Twenty-one blind spots were recorded on the first clean end-to-end run and
+    // not one reached the report. Every module is required by the contract to
+    // declare what it cannot catch; printing them is the other half of that
+    // promise.
+    if (report.blindSpots.length > 0) {
+      lines.push('**What these checks cannot catch:**');
+      lines.push('');
+      lines.push(
+        'Each check declares its own limits. A clean result above means these specific ' +
+          'defects were not found under these specific conditions — it is not evidence ' +
+          'that nothing is wrong.',
+      );
+      lines.push('');
+      for (const spot of report.blindSpots) {
+        lines.push(`- ${spot}`);
       }
       lines.push('');
     }
