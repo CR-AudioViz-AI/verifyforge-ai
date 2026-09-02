@@ -212,7 +212,7 @@ export const modelGeometryCheck: CheckModule = {
     'Textures referenced by external URI rather than embedded in the GLB. Those are counted but not measured.',
   ],
 
-  supportedTargetKinds: ['asset'],
+  supportedTargetKinds: ['mobile_app'],
   minimumAccessTier: 'public',
   intrusive: false,
 
@@ -231,11 +231,13 @@ export const modelGeometryCheck: CheckModule = {
   requiresBrowser: false,
 
   async run(context: CheckContext): Promise<CheckOutcome> {
-    const url = String(context.inputs?.['modelUrl'] ?? context.target?.url ?? '');
+    const url = String(context.inputs?.['modelUrl'] ?? context.target?.address ?? '');
     if (!url) {
       return {
         status: 'inconclusive',
         reason: 'No model URL was supplied, so there was nothing to parse.',
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 0, notes: 'Nothing was examined.' },
       };
     }
 
@@ -249,9 +251,11 @@ export const modelGeometryCheck: CheckModule = {
       httpStatus = res.status;
       if (!res.ok) {
         return {
-          status: 'inconclusive',
-          reason: `The model could not be fetched: HTTP ${res.status}. Nothing was analysed.`,
-        };
+        status: 'inconclusive',
+        reason: `The model could not be fetched: HTTP ${res.status}. Nothing was analysed.`,
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 0, notes: 'Nothing was examined.' },
+      };
       }
       buf = Buffer.from(await res.arrayBuffer());
     } catch (e) {
@@ -260,6 +264,8 @@ export const modelGeometryCheck: CheckModule = {
         reason: `The model could not be fetched: ${
           e instanceof Error ? e.message : 'network error'
         }. Nothing was analysed.`,
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 1, notes: 'Fetch failed; nothing measured.' },
       };
     }
 
