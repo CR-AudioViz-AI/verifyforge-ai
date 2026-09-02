@@ -114,7 +114,12 @@ export const mobileReadinessCheck: CheckModule = {
   async run(context: CheckContext): Promise<CheckOutcome> {
     const url = String(context.inputs?.['url'] ?? context.target?.address ?? '');
     if (!url) {
-      return { status: 'inconclusive', reason: 'No URL was supplied, so nothing was fetched.' };
+      return {
+        status: 'inconclusive',
+        reason: 'No URL was supplied, so nothing was fetched.',
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 0, notes: 'Nothing was examined.' },
+      };
     }
 
     let html = '';
@@ -287,14 +292,10 @@ export const mobileReadinessCheck: CheckModule = {
         autoFixable: false,
       });
     }
-
-    const summaryEvidence: Evidence[] = [
-      measure('mobile_document_bytes', mobileBytes, 'bytes', 'Body length of the response to a phone user agent.'),
-      measure('desktop_document_bytes', desktopBytes, 'bytes', 'Body length of the response to a desktop user agent.'),
-      measure('blocking_bytes', blockingBytes, 'bytes', 'Summed content-length of render-blocking resources in head.'),
-      measure('blocking_resources', blockingStyles.length + blockingScripts.length, 'count', 'Counted from the served markup.'),
-      httpEvidence,
-    ];
+    // The measurements above are attached to findings. A passing check reports
+    // its numbers in checked.notes rather than manufacturing a finding to carry
+    // them — a Finding means something is wrong, and a clean result has nothing
+    // wrong to report.
 
     const pwa = hasManifest && hasServiceWorker ? 'installable' : hasManifest ? 'manifest only' : 'no';
     const summary =
@@ -307,9 +308,17 @@ export const mobileReadinessCheck: CheckModule = {
         : '');
 
     if (findings.length === 0) {
-      return { status: 'pass', summary, evidence: summaryEvidence as [Evidence, ...Evidence[]] };
+      return {
+        status: 'pass',
+        findings: [],
+        checked: { subjectsExamined: 1, requestsIssued: 2, notes: summary },
+      };
     }
-    return { status: 'fail', findings: findings as [Finding, ...Finding[]], summary };
+    return {
+        status: 'fail',
+        findings: findings as [Finding, ...Finding[]],
+        checked: { subjectsExamined: 1, requestsIssued: 2, notes: summary },
+      };
   },
 };
 
