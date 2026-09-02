@@ -64,6 +64,47 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const sb = createServiceClient();
   const startedAt = new Date();
 
+  // RECLAIM STALE RUNS BEFORE LOOKING FOR NEW ONE.
+  //
+  // 2026-09-02, found by running 64 scans in a sweep rather than one at a time.
+  // A worker claims a row by setting status='running'. If the process then dies —
+  // a dropped connection, a function timeout, a deploy mid-run — the row stays
+  // 'running' forever, because the claim query only matches 'queued'.
+  //
+  // In production that is a customer whose scan hangs with no error and no
+  // result. A single test never exposes it; only volume does.
+  //
+  // The window is maxDuration plus a margin. Anything still 'running' after that
+  // cannot still be running: the function that owned it was killed by the
+  // platform. attempts is already incremented at claim time, so a genuinely
+  // poisonous job still stops at MAX_ATTEMPTS rather than cycling forever.
+  const staleBefore = new Date(Date.now() - (maxDuration + 60) * 1000).toISOString();
+  const { data: reclaimed } = await sb
+    .from('jvf_runs')
+    .update({ status: 'queued', error: 'Worker died mid-run; requeued automatically.' })
+    .eq('status', 'running')
+    .lt('started_at', staleBefore)
+    .lt('attempts', MAX_ATTEMPTS)
+    .select('run_id');
+
+  if (reclaimed && reclaimed.length > 0) {
+    console.warn(`[scan-worker] reclaimed ${reclaimed.length} stale run(s)`);
+  }
+
+  // A run that has exhausted its attempts while stuck is failed outright rather
+  // than requeued. Leaving it 'running' is the silent version of the same bug.
+  await sb
+    .from('jvf_runs')
+    .update({
+      status: 'failed',
+      completed_at: new Date().toISOString(),
+      error: `Worker died mid-run ${MAX_ATTEMPTS} times. Not retried again.`,
+    })
+    .eq('status', 'running')
+    .lt('started_at', staleBefore)
+    .gte('attempts', MAX_ATTEMPTS);
+
+
   // Oldest first. A queue that serves the newest first starves the customer who
   // has already waited longest, which is the opposite of fair.
   const { data: candidates, error: readErr } = await sb
@@ -181,7 +222,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // hammering every URL, injects them as profile.inputs.routes, and prices by
   // the work actually performed. Two of the four original checks could not run
   // at all because this route reimplemented a third of it and skipped the rest.
-  const plan_ = await plan(req.target, req.profile, registry);
+  // BUDGET DISCOVERY AGAINST THE FUNCTION'S OWN DEADLINE.
+  //
+  // 2026-09-02: DEFAULT_BUDGET allows 180s of crawling and maxDuration is 300s,
+  // so a large site could spend three of its five minutes discovering and leave
+  // under two for every check. craudiovizai.com is the one target in the sweep
+  // that hung — it has 598 pages and 822 API routes.
+  //
+  // Discovery gets a third of the window. A scan that crawls thoroughly and then
+  // dies before checking anything has produced nothing, and 'partial' discovery
+  // is reported honestly in the plan rather than hidden.
+  const plan_ = await plan(req.target, req.profile, registry, {
+    maxPages: 200,
+    maxDepth: 4,
+    maxWallClockMs: Math.floor(maxDuration * 1000 * 0.33),
+  });
 
   const estimate = registry.estimate(req.profile, req.target);
 
