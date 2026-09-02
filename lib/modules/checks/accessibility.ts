@@ -112,41 +112,160 @@ const AUDIT_SCRIPT = `
   if (small.length) out.push({ rule: 'target-size', count: small.length, sample: small.slice(0,3).map((e) => describe(e) + ' ' + Math.round(e.getBoundingClientRect().width) + 'x' + Math.round(e.getBoundingClientRect().height)).join(', ') });
 
   // --- Text contrast (WCAG 1.4.3) ------------------------------------------
-  const lum = (c) => {
-    const m = c.match(/[\\d.]+/g);
+  //
+  // 2026-09-02, REWRITTEN after the first version produced 86 false positives on
+  // our own site. Two distinct bugs, both of which made correct pages look broken:
+  //
+  //   ALPHA WAS IGNORED. bgOf() returned the first background that was not fully
+  //   transparent, and the luminance function read rgba(255,255,255,0.016) as pure
+  //   white. White text over a 1.6% white overlay on a DARK page computed as
+  //   white-on-white, 1.05:1 — perfectly readable text reported as invisible.
+  //
+  //   ELEMENTS WITH NO TEXT OF THEIR OWN WERE TESTED. An <a> wrapping four child
+  //   elements has no text node of its own, but textContent returns every
+  //   descendant. Its computed colour applies to nothing, and the children were
+  //   flagged separately — so one card counted five times.
+  //
+  // A contrast checker that cries wolf is worse than none: people learn to skip
+  // the section, and the real failure goes out with the noise.
+  const parseRgba = (c) => {
+    const m = c.match(/[\d.]+/g);
     if (!m || m.length < 3) return null;
-    const [r,g,b] = m.slice(0,3).map(Number).map((v) => { v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); });
-    return 0.2126*r + 0.7152*g + 0.0722*b;
+    return { r: +m[0], g: +m[1], b: +m[2], a: m.length > 3 ? +m[3] : 1 };
   };
-  const bgOf = (el) => {
+  const relLum = (c) => {
+    const f = [c.r, c.g, c.b].map((v) => { v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); });
+    return 0.2126*f[0] + 0.7152*f[1] + 0.0722*f[2];
+  };
+  // Source-over compositing. This is what the browser actually does, and it is the
+  // only way a translucent overlay yields the colour a human sees.
+  const over = (fg, bg) => ({
+    r: fg.r * fg.a + bg.r * (1 - fg.a),
+    g: fg.g * fg.a + bg.g * (1 - fg.a),
+    b: fg.b * fg.a + bg.b * (1 - fg.a),
+    a: 1,
+  });
+  // Walks up collecting every translucent layer, then composites them over the
+  // base in painting order. Returns null when an ancestor paints an image or
+  // gradient, because there is no single colour to measure against and guessing
+  // one is how a checker invents failures.
+  // Colour stops out of a CSS gradient. A gradient is not one colour, but it is a
+  // BOUNDED SET of colours — so the worst stop bounds the worst contrast. If text
+  // passes against every stop it passes everywhere in that gradient, which is a
+  // proof rather than an estimate.
+  //
+  // Most tools skip gradients entirely and report nothing. That is safe and it is
+  // also useless: our own page put 133 elements over gradients, every one of them
+  // genuinely measurable this way.
+  const gradientStops = (img) => {
+    if (!img || img === 'none') return null;
+    if (!/gradient\(/.test(img)) return null; // a real image; genuinely unmeasurable
+    const stops = [];
+    for (const m of img.matchAll(/rgba?\(([^)]+)\)/g)) {
+      const c = parseRgba('rgb(' + m[1] + ')');
+      if (c) stops.push(c);
+    }
+    return stops.length ? stops : null;
+  };
+
+  const effectiveBg = (el) => {
+    const layers = [];
     let n = el;
+    let gradient = null;
     while (n && n !== document.documentElement) {
-      const bg = getComputedStyle(n).backgroundColor;
-      if (bg && !/rgba\\(0, 0, 0, 0\\)|transparent/.test(bg)) return bg;
+      const s = getComputedStyle(n);
+      const c = parseRgba(s.backgroundColor);
+      // Colour FIRST. An element painting an opaque background hides whatever is
+      // behind it, gradient included — so the walk stops and the answer is exact.
+      //
+      // The first version tested backgroundImage before the colour and bailed
+      // immediately, which meant a single gradient anywhere up the tree made every
+      // descendant unmeasurable.
+      if (c && c.a >= 0.999) { layers.push(c); break; }
+      if (s.backgroundImage && s.backgroundImage !== 'none') {
+        const stops = gradientStops(s.backgroundImage);
+        if (!stops) return null; // a bitmap: no bounded colour set, so no claim
+        // Keep the FIRST gradient encountered walking outward — it is the one
+        // painted closest to the text.
+        if (!gradient) gradient = stops;
+        const opaque = stops.filter((x) => x.a >= 0.999);
+        if (opaque.length) { layers.push(...opaque.slice(0, 1)); break; }
+      }
+      if (c && c.a > 0) layers.push(c);
       n = n.parentElement;
     }
-    return getComputedStyle(document.body).backgroundColor || 'rgb(255,255,255)';
+    if (gradient) return { gradient, layers };
+    const rootStyle = getComputedStyle(document.documentElement);
+    const bodyStyle = getComputedStyle(document.body);
+    const base =
+      parseRgba(bodyStyle.backgroundColor)?.a === 1 ? parseRgba(bodyStyle.backgroundColor)
+      : parseRgba(rootStyle.backgroundColor)?.a === 1 ? parseRgba(rootStyle.backgroundColor)
+      : { r: 255, g: 255, b: 255, a: 1 };
+    let result = base;
+    for (let i = layers.length - 1; i >= 0; i--) result = over(layers[i], result);
+    return result;
   };
-  const textEls = [...document.querySelectorAll('p, span, a, li, h1, h2, h3, h4, h5, h6, button, label, td')]
+
+  // Only elements that own a non-trivial text node. An element whose text belongs
+  // to its children has a computed colour that applies to nothing.
+  const ownsText = (el) =>
+    [...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent || '').trim().length > 2);
+
+  const textEls = [...document.querySelectorAll('p, span, a, li, h1, h2, h3, h4, h5, h6, button, label, td, div')]
     .filter(visible)
-    .filter((el) => (el.textContent||'').trim().length > 2)
+    .filter(ownsText)
     .slice(0, 400);
-  let lowContrast = 0, worst = 99, worstDesc = '';
+
+  let lowContrast = 0, worst = 99, worstDesc = '', skippedImage = 0;
   for (const el of textEls) {
     const s = getComputedStyle(el);
-    const fg = lum(s.color), bg = lum(bgOf(el));
-    if (fg === null || bg === null) continue;
-    const ratio = (Math.max(fg,bg) + 0.05) / (Math.min(fg,bg) + 0.05);
+    const fgRaw = parseRgba(s.color);
+    const bgResult = effectiveBg(el);
+    if (!fgRaw) continue;
+    if (!bgResult) { skippedImage++; continue; }
+
+    // Against a gradient, take the WORST stop. Passing the worst case means
+    // passing everywhere along it.
+    let ratio, bg;
+    const evaluate = (base) => {
+      const composited = bgResult.layers && bgResult.layers.length
+        ? bgResult.layers.slice().reverse().reduce((acc, l) => over(l, acc), base)
+        : base;
+      const f = fgRaw.a < 1 ? over(fgRaw, composited) : fgRaw;
+      const lf = relLum(f), lb = relLum(composited);
+      return { r: (Math.max(lf, lb) + 0.05) / (Math.min(lf, lb) + 0.05), bg: composited };
+    };
+    if (bgResult.gradient) {
+      let worstR = Infinity, worstBg = null;
+      for (const stop of bgResult.gradient) {
+        const opaqueStop = stop.a >= 0.999 ? stop : over(stop, { r: 255, g: 255, b: 255, a: 1 });
+        const e = evaluate(opaqueStop);
+        if (e.r < worstR) { worstR = e.r; worstBg = e.bg; }
+      }
+      ratio = worstR; bg = worstBg;
+    } else {
+      const e = evaluate(bgResult);
+      ratio = e.r; bg = e.bg;
+    }
     const size = parseFloat(s.fontSize) || 16;
-    const boldish = (parseInt(s.fontWeight,10) || 400) >= 700;
-    // Large text (18.66px bold, or 24px) needs 3:1; everything else 4.5:1.
+    const boldish = (parseInt(s.fontWeight, 10) || 400) >= 700;
     const required = (size >= 24 || (size >= 18.66 && boldish)) ? 3 : 4.5;
     if (ratio < required) {
       lowContrast++;
-      if (ratio < worst) { worst = ratio; worstDesc = describe(el) + ' ' + ratio.toFixed(2) + ':1 (needs ' + required + ':1)'; }
+      if (ratio < worst) {
+        worst = ratio;
+        worstDesc = describe(el) + ' ' + ratio.toFixed(2) + ':1 (needs ' + required + ':1) "' +
+          (el.textContent || '').trim().slice(0, 30) + '"';
+      }
     }
   }
+  // 2026-09-02: this line was LOST in the contrast rewrite. lowContrast was
+  // counted and never emitted, so two deliberately-failing test cases —
+  // #cccccc on white at 1.6:1 and #dddddd on a light gradient — were reported
+  // clean. A false negative in a testing product is worse than a false positive:
+  // one wastes an hour, the other ships the bug.
   if (lowContrast) out.push({ rule: 'contrast', count: lowContrast, sample: worstDesc });
+  if (skippedImage) out.push({ rule: 'contrast-unmeasurable', count: skippedImage, sample: 'text over a background image or gradient — no single colour to measure' });
 
   return out;
 })();
@@ -201,6 +320,13 @@ const RULES: Readonly<Record<string, Omit<AxeIssue, 'count' | 'sample' | 'rule'>
     title: 'Tap targets below 24×24 CSS pixels',
     why: 'Small targets are hard to hit with a thumb, and disproportionately so for anyone with a tremor or limited dexterity. Measured from the rendered box, not the markup, and inline links inside paragraphs are exempt.',
     fix: 'Give interactive elements at least 24×24 CSS pixels of hit area — padding counts, so the visual size need not change.',
+  },
+  'contrast-unmeasurable': {
+    wcag: 'WCAG 2.2 · 1.4.3 Contrast Minimum (Level AA)',
+    severity: 'LOW',
+    title: 'Text over an image or gradient — contrast not measurable',
+    why: 'These are NOT reported as failures. There is no single background colour to measure against, so the ratio cannot be computed automatically. They still need checking, by eye or against the darkest and lightest points of the image.',
+    fix: 'Check these manually, or add a solid scrim behind the text so contrast becomes deterministic rather than dependent on the image.',
   },
   contrast: {
     wcag: 'WCAG 2.2 · 1.4.3 Contrast Minimum (Level AA)',
