@@ -131,7 +131,7 @@ export const gamePayloadCheck: CheckModule = {
     'Whether WebGL actually initialises on a given device. Context creation is read from source, not executed.',
   ],
 
-  supportedTargetKinds: ['url'],
+  supportedTargetKinds: ['game', 'web_property'],
   minimumAccessTier: 'public',
   intrusive: false,
 
@@ -150,7 +150,7 @@ export const gamePayloadCheck: CheckModule = {
   requiresBrowser: false,
 
   async run(context: CheckContext): Promise<CheckOutcome> {
-    const url = String(context.inputs?.['gameUrl'] ?? context.target?.url ?? '');
+    const url = String(context.inputs?.['gameUrl'] ?? context.target?.address ?? '');
     if (!url) {
       return { status: 'inconclusive', reason: 'No game URL was supplied, so nothing was fetched.' };
     }
@@ -166,9 +166,11 @@ export const gamePayloadCheck: CheckModule = {
       });
       if (!res.ok) {
         return {
-          status: 'inconclusive',
-          reason: `The game could not be fetched: HTTP ${res.status}. Nothing was analysed.`,
-        };
+        status: 'inconclusive',
+        reason: `The game could not be fetched: HTTP ${res.status}. Nothing was analysed.`,
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 0, notes: 'Nothing was examined.' },
+      };
       }
       html = await res.text();
     } catch (e) {
@@ -177,6 +179,8 @@ export const gamePayloadCheck: CheckModule = {
         reason: `The game could not be fetched: ${
           e instanceof Error ? e.message : 'network error'
         }. Nothing was analysed.`,
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 1, notes: 'Fetch failed; nothing measured.' },
       };
     }
 
