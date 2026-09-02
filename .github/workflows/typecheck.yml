@@ -72,3 +72,10 @@ jobs:
             fs.writeFileSync('tsconfig.ci.json',JSON.stringify(c,null,2));
           "
           ./node_modules/.bin/tsc --noEmit -p tsconfig.ci.json
+
+      # Fails when the check catalog and the module registry disagree. Neither
+      # kind of drift breaks a build on its own, which is exactly why it needs a
+      # build check: an unregistered module can never run, and a check with no
+      # metadata renders as an unlabelled row.
+      - name: Catalog consistency
+        run: node scripts/check-catalog-consistency.mjs
