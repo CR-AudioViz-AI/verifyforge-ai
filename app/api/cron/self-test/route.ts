@@ -32,6 +32,7 @@ import {
   scoreFixtures,
   buildSelfTestReport,
 } from '@/lib/engine/self-test';
+import { openSession } from '@/lib/engine/session';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 180;
@@ -94,22 +95,40 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const fixture = FIXTURES[i];
         if (fixture === undefined || fixture.moduleId !== moduleId) continue;
         try {
+          // 2026-09-04: a REAL session, established the way a real scan
+          // establishes one.
+          //
+          // The first version passed a context object cast with `as never`,
+          // which silently omitted the session CheckContext requires. Modules
+          // fetch through the session, so they had nothing to fetch with and
+          // produced no findings — reported as four detectors failing when the
+          // detectors were never given the means to run.
+          //
+          // The cast was the whole problem: it turned a compile error that would
+          // have named the missing field into a runtime silence that looked like
+          // a product defect. This is why `as never` has no place in a harness
+          // whose entire job is telling the truth about whether things work.
+          const fixtureTarget = {
+            id: `${server.origin}/f${i}/`,
+            kind: 'web_property' as const,
+            label: 'self-test fixture',
+            address: `${server.origin}/f${i}/`,
+            accessTier: 'public' as const,
+            authorization: { kind: 'owned' as const, note: 'in-process fixture' },
+            rateLimitRps: 100,
+            respectRobotsTxt: false,
+          };
+          const { session } = await openSession(fixtureTarget, { kind: 'anonymous' }, null);
+
           const outcome = await module.run({
-            target: {
-              id: `${server.origin}/f${i}/`,
-              kind: 'web_property',
-              label: 'self-test fixture',
-              address: `${server.origin}/f${i}/`,
-              accessTier: 'public',
-              authorization: { kind: 'owned', note: 'in-process fixture' },
-              rateLimitRps: 100,
-              respectRobotsTxt: false,
-            },
+            target: fixtureTarget,
+            session,
+            // CheckContext has exactly five fields. The earlier version invented
+            // a `budget` key and inlined a target, and `as never` accepted both
+            // without complaint.
             inputs: {
               url: `${server.origin}/f${i}/`,
               origin: `${server.origin}/f${i}/`,
-              // The defective route plus ordinary siblings, so checks that
-              // reason about a SITE have a site to reason about.
               routes: [
                 `${server.origin}/f${i}/`,
                 `${server.origin}/f${i}/normal-1`,
@@ -117,9 +136,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
                 `${server.origin}/f${i}/normal-3`,
               ].join('\n'),
             },
-            budget: { maxRequests: 20, maxWallClockMs: 15_000 },
-            signal: AbortSignal.timeout(20_000),
-          } as never);
+            signal: AbortSignal.timeout(25_000),
+            log: () => {
+              /* the harness reports for itself; module logs are not needed here */
+            },
+          });
           if (outcome.status === 'fail') produced.push(...outcome.findings);
         } catch {
           // A module that throws on a fixture has failed that fixture. Recorded
