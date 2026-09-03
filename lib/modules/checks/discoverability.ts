@@ -168,14 +168,41 @@ export const discoverabilityCheck: CheckModule = {
     } else {
       try {
         const canonicalHost = new URL(canonical, origin).host;
+        // 2026-09-04: a cross-origin canonical is only a defect when the CONTENT
+        // DIFFERS.
+        //
+        // The first version flagged any canonical naming another host, which
+        // caught connect.craudiovizai.com pointing at dating.craudiovizai.com —
+        // and those two serve byte-identical bodies. That is a true alias, and
+        // consolidating an alias onto its primary is CORRECT, not a defect.
+        //
+        // javaridata.com in the same run pointed at craudiovizai.com while
+        // serving entirely different content, which is the real failure: a
+        // distinct page declaring itself a duplicate of somebody else's
+        // homepage, and it will be dropped from results.
+        //
+        // So the page is fetched and compared before anything is claimed. A
+        // scanner that cannot tell an alias from a mistake produces exactly the
+        // noise that gets reports ignored.
+        let contentDiffers = true;
         if (canonicalHost !== host) {
+          const target = await get(`${new URL(canonical, origin).origin}`);
+          requests++;
+          if (target !== null && target.status < 400) {
+            const normalise = (t: string): string =>
+              t.replace(/\s+/g, ' ').replace(/<!--[\s\S]*?-->/g, '').trim();
+            contentDiffers = normalise(target.body) !== normalise(html);
+          }
+        }
+        if (canonicalHost !== host && contentDiffers) {
           // This is the one that is actively harmful rather than merely absent.
           problems.push({
             ruleId: 'seo.canonical.foreign',
             severity: 'HIGH',
             title: 'The canonical URL points at a different domain',
             description:
-              `This page tells search engines the real version lives on ${canonicalHost}. Every signal it earns is handed to that domain and this one is dropped from results. It is usually a template copied between sites with the URL left behind.`,
+              `This page tells search engines the real version lives on ${canonicalHost}, and the two serve DIFFERENT content. Every signal this page earns is handed to that domain and this one is dropped from results entirely. It is usually a template copied between sites with the URL left behind.\n\n` +
+              'Checked before reporting: if both origins served the same content this would be a correct alias consolidation and would not appear here.',
             fix: 'Point the canonical at this origin.',
             detail: `canonical=${canonical}, page host=${host}`,
           });
