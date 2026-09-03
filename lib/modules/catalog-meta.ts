@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'platform.posture',
+    groupId: 'supply',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Reads configuration files directly from the repository. A finding is a fact about a file, not an inference — and a repository that cannot be read is reported inconclusive rather than clean.',
+    },
+    whyItMatters:
+      'The defects that cost the most are invisible from outside: TypeScript strict off so the compiler rejects correct auth guards, Actions pinned to a tag someone else controls, a production site serving from an archived repository nobody can patch.',
+    evidence:
+      'Found on this platform on 3 September 2026 — 107 repositories on strict:false or an es5 target, one production site deploying from an archived read-only repo, and every GitHub Action tag-pinned rather than SHA-pinned. An August fleet pass had fixed 46 and covered only repos carrying the platform env shim.',
+  },
+  {
     moduleId: 'security.posture',
     groupId: 'transport',
     defaultOn: true,

@@ -20,6 +20,7 @@ import { gamePayloadCheck } from './modules/checks/game-payload';
 import { modelGeometryCheck } from './modules/checks/model-geometry';
 import { aiSafetyCheck } from './modules/checks/ai-safety';
 import { accessibilityCheck } from './modules/checks/accessibility';
+import { platformPostureCheck } from './modules/checks/platform-posture';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -54,6 +55,13 @@ export function buildRegistry(): ModuleRegistry {
   // render: contrast is computed, tap-target size comes from the box model, and
   // an element hidden by CSS is not in the accessibility tree at all.
   registry.register(accessibilityCheck);
+
+  // 2026-09-03: the ecosystem sweep found 536 defects and every one was about a
+  // running page, because that is all the modules could examine. The defects that
+  // did the most damage were invisible to all of them — 107 repos on strict:false,
+  // a production site serving from an archived repo, a cron 401ing since creation.
+  // Found by hand, once, with nothing to catch them recurring.
+  registry.register(platformPostureCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is
