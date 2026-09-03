@@ -24,6 +24,7 @@ import { platformPostureCheck } from './modules/checks/platform-posture';
 import { infraPostureCheck } from './modules/checks/infra-posture';
 import { commerceIntegrityCheck } from './modules/checks/commerce-integrity';
 import { authFlowCheck } from './modules/checks/auth-flow';
+import { databaseExposureCheck } from './modules/checks/database-exposure';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -77,6 +78,11 @@ export function buildRegistry(): ModuleRegistry {
   // honours an attacker-supplied redirect hands over the authorisation code, and
   // the code is the account. There is no partial version of that failure.
   registry.register(authFlowCheck);
+
+  // Supabase publishes the database over HTTP and the publishable key is in every
+  // page. Row-level security is the only thing between a table and the internet:
+  // a table with RLS off is not misconfigured, it is published.
+  registry.register(databaseExposureCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is

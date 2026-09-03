@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'database.exposure',
+    groupId: 'data',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Judged on ROWS RETURNED, never on status code. A 200 with an empty array is row-level security working correctly and is not reported. The first version of this probe treated 200 as readable and would have declared the user credits table publicly exposed when it was not.',
+    },
+    whyItMatters:
+      'The publishable key ships in every page. Row-level security is the only thing between a PostgREST table and the internet — a table with RLS off is not misconfigured, it is published.',
+    evidence:
+      'Found on this platform on 3 September 2026: one table in a 904-table schema had RLS disabled and served merchant identifiers and ingest data to any anonymous browser. The other 80 tables with RLS enabled and no policy were correctly NOT flagged - that is the right configuration for service-role-only data.',
+  },
+  {
     moduleId: 'auth.flow',
     groupId: 'access',
     defaultOn: true,
