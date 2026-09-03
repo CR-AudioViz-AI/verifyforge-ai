@@ -294,21 +294,68 @@ export async function serveFixtures(fixtures: readonly Fixture[]): Promise<Fixtu
   try {
     const http = await import('node:http');
 
-    const routes = new Map<string, Fixture>();
-    fixtures.forEach((f, i) => routes.set(`/fixture-${i}`, f));
-
+    // 2026-09-04: EACH FIXTURE GETS ITS OWN ORIGIN-LIKE PREFIX.
+    //
+    // The first version served every fixture at a flat /fixture-N path. That
+    // broke five of nine, and not because the detectors were wrong: modules
+    // fetch conventional paths RELATIVE to the origin they are given, so
+    // discoverability asked for /fixture-4/robots.txt and got a 404 while the
+    // robots content sat at /fixture-4 itself.
+    //
+    // The first live run reported those as detector failures. They were harness
+    // failures, and a self-test that blames the detector for its own harness is
+    // the loudest possible version of the false alarm this file exists to stop.
+    //
+    // So a fixture is served as a small site: /fN/ is the page, and its
+    // conventional siblings answer beneath it.
     const server = http.createServer((req, res) => {
-      const fixture = routes.get((req.url ?? '').split('?')[0] ?? '');
-      if (!fixture) {
+      const path = (req.url ?? '/').split('?')[0] ?? '/';
+      const match = /^\/f(\d+)(\/.*)?$/.exec(path);
+      if (!match) {
         res.writeHead(404, { 'content-type': 'text/plain' });
         res.end('not a fixture');
         return;
       }
-      res.writeHead(200, {
-        'content-type': fixture.material.startsWith('User-agent') ? 'text/plain' : 'text/html',
-        ...(fixture.headers ?? {}),
-      });
-      res.end(fixture.material);
+      const fixture = fixtures[Number(match[1])];
+      const sub = match[2] ?? '/';
+      if (!fixture) {
+        res.writeHead(404, { 'content-type': 'text/plain' });
+        res.end('no such fixture');
+        return;
+      }
+
+      const isRobots = fixture.material.startsWith('User-agent');
+      const wantsRobots = sub === '/robots.txt';
+
+      // A robots fixture answers at /robots.txt and serves a plain page at the
+      // root, so the module reaches the material it was written to examine.
+      if (isRobots) {
+        if (wantsRobots) {
+          res.writeHead(200, { 'content-type': 'text/plain' });
+          res.end(fixture.material);
+        } else if (sub === '/') {
+          res.writeHead(200, { 'content-type': 'text/html', ...(fixture.headers ?? {}) });
+          res.end('<!DOCTYPE html><html lang="en"><head><title>t</title><link rel="canonical" href="/"></head><body><h1>t</h1></body></html>');
+        } else {
+          res.writeHead(404, { 'content-type': 'text/plain' });
+          res.end('nf');
+        }
+        return;
+      }
+
+      // A document fixture answers at the root. Conventional siblings 404
+      // honestly rather than echoing the fixture, because a module that reads a
+      // sitemap and receives HTML should see exactly that.
+      if (sub === '/') {
+        res.writeHead(200, {
+          'content-type': 'text/html',
+          ...(fixture.headers ?? {}),
+        });
+        res.end(fixture.material);
+        return;
+      }
+      res.writeHead(404, { 'content-type': 'text/plain' });
+      res.end('nf');
     });
 
     const port: number = await new Promise((resolve, reject) => {

@@ -84,19 +84,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         try {
           const outcome = await module.run({
             target: {
-              id: `${server.origin}/fixture-${i}`,
+              id: `${server.origin}/f${i}/`,
               kind: 'web_property',
               label: 'self-test fixture',
-              address: `${server.origin}/fixture-${i}`,
+              address: `${server.origin}/f${i}/`,
               accessTier: 'public',
               authorization: { kind: 'owned', note: 'in-process fixture' },
               rateLimitRps: 100,
               respectRobotsTxt: false,
             },
             inputs: {
-              url: `${server.origin}/fixture-${i}`,
-              origin: `${server.origin}/fixture-${i}`,
-              routes: `${server.origin}/fixture-${i}`,
+              url: `${server.origin}/f${i}/`,
+              origin: `${server.origin}/f${i}/`,
+              routes: `${server.origin}/f${i}/`,
             },
             budget: { maxRequests: 20, maxWallClockMs: 15_000 },
             signal: AbortSignal.timeout(20_000),
