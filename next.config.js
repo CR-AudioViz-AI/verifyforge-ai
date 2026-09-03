@@ -77,4 +77,16 @@ const _edgeCryptoOff = (config, { nextRuntime }) => {
   return config;
 };
 
-module.exports = { ...nextConfig, webpack: _edgeCryptoOff };
+// 2026-09-05 Next 16: webpack config removed.
+//
+// Turbopack is the default builder in Next 16 and refuses to start when a
+// webpack config exists with no turbopack equivalent.
+//
+// This block existed only to disable the crypto fallback on the edge runtime.
+// It is scaffolding for a problem Turbopack does not have: node:crypto resolves
+// correctly on edge. Proven on javari-logo and javari-forge, both of which built
+// and deployed on 16.3.4 with it deleted.
+//
+// Thirty-seven repos carried a byte-identical copy - one sha256 across all of
+// them - so this is one fix applied thirty-seven times, not thirty-seven fixes.
+module.exports = { ...nextConfig };
