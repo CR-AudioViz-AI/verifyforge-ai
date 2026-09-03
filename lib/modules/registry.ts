@@ -31,6 +31,7 @@ import {
   estimateProfile,
   inconclusive,
   type CheckContext,
+  type Finding,
   type CheckModule,
   type CheckOutcome,
   type CheckResult,
@@ -39,6 +40,7 @@ import {
 } from './contract';
 import { permitsIntrusive, tierMeets, type Target } from './target';
 import type { Session } from '../engine/session';
+import { runToQuiet, isNonDeterministic } from '../engine/convergence';
 
 // ---------------------------------------------------------------------------
 // Registry
@@ -217,7 +219,40 @@ export async function runProfile(
     let outcome: CheckOutcome;
 
     try {
-      outcome = await module.run(context);
+        // 2026-09-04: NON-DETERMINISTIC CHECKS RUN UNTIL THEY GO QUIET.
+        //
+        // An AI probe answers differently each time. A crawl finds different
+        // routes depending on what resolved before the budget ran out. A
+        // performance measurement varies with machine load. For those, one pass
+        // is a SAMPLE, and reporting it as a result is the same overclaim as
+        // treating a clean scan as proof of safety.
+        //
+        // Deterministic checks run exactly once. Repeating a header lookup five
+        // times spends the target's rate limit to learn nothing, and billing for
+        // that confuses thoroughness with activity.
+        //
+        // Findings are UNIONED across passes, never intersected: a defect seen
+        // once in four passes is still a defect, and intersecting would discard
+        // precisely the intermittent faults that are hardest to catch.
+        if (isNonDeterministic(moduleId)) {
+          const converged = await runToQuiet(moduleId, async () => {
+            const pass = await module.run(context);
+            return pass.status === 'fail' ? pass.findings : [];
+          });
+          outcome = await module.run(context);
+          if (converged.findings.length > 0 && outcome.status !== 'inconclusive') {
+            outcome = {
+              status: 'fail',
+              findings: converged.findings as [Finding, ...Finding[]],
+              checked: {
+                ...outcome.checked,
+                notes: `${outcome.checked.notes ?? ''} ${converged.assurance}`.trim(),
+              },
+            };
+          }
+        } else {
+          outcome = await module.run(context);
+        }
     } catch (error: unknown) {
       // The contract says modules must not throw. This is what happens when one
       // does anyway: an honest inconclusive, never a pass, never a dead scan.
