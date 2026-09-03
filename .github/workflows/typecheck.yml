@@ -79,3 +79,8 @@ jobs:
       # metadata renders as an unlabelled row.
       - name: Catalog consistency
         run: node scripts/check-catalog-consistency.mjs
+
+      # A self-test that fails on its own error reports a working scanner as
+      # broken, and nobody reads the third one. This keeps the fixtures honest.
+      - name: Self-test fixtures
+        run: node scripts/check-self-test-fixtures.mjs
