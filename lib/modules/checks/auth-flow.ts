@@ -153,7 +153,28 @@ export const authFlowCheck: CheckModule = {
         // it embeds the attacker as the destination it hands the provider. The
         // second is the subtle one and the more dangerous, because the URL the
         // user sees belongs to the real provider.
-        const directlyLeaks = target.includes('javari-verify-redirect-probe.invalid');
+        // 2026-09-04: THE HOST, NOT THE STRING.
+        //
+        // This used to test whether the Location header CONTAINED the probe
+        // host anywhere. craudiovizaidev.com is a domain alias that 308s to
+        // craudiovizai.com and preserves the query string, so the Location read
+        // 'https://craudiovizai.com/auth/signin?next=https://<probe>' — the
+        // probe appears in the URL, and the browser is being sent to our own
+        // production origin, which then correctly refuses the parameter.
+        //
+        // That produced six BLOCKER findings on a domain with no vulnerability
+        // at all. A false BLOCKER is the most expensive kind: it is the one
+        // somebody drops everything for.
+        //
+        // What matters is where the browser actually goes, which is the HOST of
+        // the Location — never the query string it carries along.
+        let redirectHost = '';
+        try {
+          redirectHost = new URL(target, `${origin}${path}`).host;
+        } catch {
+          redirectHost = '';
+        }
+        const directlyLeaks = redirectHost === 'javari-verify-redirect-probe.invalid';
 
         if (directlyLeaks) {
           problems.push({
