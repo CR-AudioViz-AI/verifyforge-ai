@@ -44,7 +44,19 @@ const moduleIds = new Set();
 const exportNames = new Set();
 for (const file of readdirSync(CHECKS_DIR).filter((f) => f.endsWith('.ts'))) {
   const src = readFileSync(join(CHECKS_DIR, file), 'utf8');
-  const id = /^  id: '([^']+)'/m.exec(src)?.[1];
+  // 2026-09-03: anchored to the CheckModule declaration.
+  //
+  // The previous pattern matched any line beginning "  id: '...'", which caught
+  // an `id` field inside a probe payload in commerce-integrity and reported the
+  // module as "evt_javari_verify_probe_0000000000". The guard was right that
+  // something was inconsistent and wrong about what.
+  //
+  // The module id is the first `id:` INSIDE the exported CheckModule object, so
+  // the search starts there rather than at the top of the file.
+  const declStart = src.search(/export const \w+: CheckModule/);
+  const id = declStart >= 0
+    ? /^  id: '([^']+)'/m.exec(src.slice(declStart))?.[1]
+    : /^  id: '([^']+)'/m.exec(src)?.[1];
   const exp = /^export const (\w+): CheckModule/m.exec(src)?.[1];
   if (!id) fail.push(`${file}: no module id found`);
   else moduleIds.add(id);

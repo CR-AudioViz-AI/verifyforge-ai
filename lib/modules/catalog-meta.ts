@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'commerce.integrity',
+    groupId: 'payments',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'A handler that verifies signatures rejects an unsigned request; one that does not, accepts it. That is a one-request test with an unambiguous answer. Every payload sent is inert - structurally valid but referring to objects that cannot exist - so a handler that wrongly accepts one still has nothing to act on.',
+    },
+    whyItMatters:
+      'A payment endpoint that accepts a forged webhook does not error, does not slow down, and appears in logs as ordinary traffic. It simply marks orders paid and grants credits to whoever asked. This is the only defect class where the attacker is paid rather than merely admitted.',
+    evidence:
+      'Probed on this platform on 3 September 2026: /api/admin/credits/grant, /api/auth/seed-credits and /api/admin/billing all correctly returned 401 to an anonymous caller, and both payment webhooks refused an unsigned event. The check exists to keep that true.',
+  },
+  {
     moduleId: 'infra.posture',
     groupId: 'supply',
     defaultOn: true,

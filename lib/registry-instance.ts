@@ -22,6 +22,7 @@ import { aiSafetyCheck } from './modules/checks/ai-safety';
 import { accessibilityCheck } from './modules/checks/accessibility';
 import { platformPostureCheck } from './modules/checks/platform-posture';
 import { infraPostureCheck } from './modules/checks/infra-posture';
+import { commerceIntegrityCheck } from './modules/checks/commerce-integrity';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -64,6 +65,12 @@ export function buildRegistry(): ModuleRegistry {
   // Found by hand, once, with nothing to catch them recurring.
   registry.register(platformPostureCheck);
   registry.register(infraPostureCheck);
+
+  // Money. Every other module answers "is this broken"; this one answers "can
+  // somebody take money, or take value without paying" — and those defects are
+  // silent by design. A webhook handler that accepts a forged event does not
+  // error and does not slow down. It simply grants what it was asked to grant.
+  registry.register(commerceIntegrityCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is
