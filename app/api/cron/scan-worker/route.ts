@@ -32,6 +32,9 @@ import { execute, plan, renderChangeSection } from '@/lib/engine/scan';
 import { renderMarkdown } from '@/lib/modules/report';
 import { buildRegistry } from '@/lib/registry-instance';
 import { getHistoryStore } from '@/lib/store/history-instance';
+import { FIXTURES, scoreFixtures, buildSelfTestReport, type SelfTestReport } from '@/lib/engine/self-test';
+import { challengeAll, type AdversarialReport } from '@/lib/engine/adversarial';
+import { estimateCoverage, summariseCoverage } from '@/lib/engine/coverage';
 import {
   lessonsFrom,
   toLearningEvents,
@@ -329,6 +332,63 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
 
+    // ASSURANCE LAYER. 2026-09-04.
+    //
+    // Three things run between finishing the scan and reporting it, because a
+    // finished scan and a trustworthy scan are not the same thing:
+    //
+    //   the self-test says whether the checks could find anything at all
+    //   the challenge says whether each finding survives being re-tested
+    //   coverage says how much of each population was actually examined
+    //
+    // All three are wrapped. A failure here must never lose the customer their
+    // report - they paid for a scan and the findings carry their own evidence.
+    // Assurance that costs somebody their results is not assurance.
+    let assurance: {
+      selfTest: SelfTestReport | null;
+      challenged: AdversarialReport | null;
+      coverage: string | null;
+    } = { selfTest: null, challenged: null, coverage: null };
+
+    try {
+      const produced = outcome.run.results.flatMap((r) =>
+        r.outcome.status === 'fail' ? [...r.outcome.findings] : [],
+      );
+
+      // Disprove before reporting. Four false positives in two days were caught
+      // by a person checking by hand; this is that habit made mechanical.
+      assurance.challenged = await challengeAll(produced);
+
+      // Coverage per check, never averaged into one figure - these checks count
+      // different things and a combined number would mean nothing.
+      const estimates = outcome.run.results.map((r) =>
+        estimateCoverage({
+          moduleId: r.moduleId,
+          examined: r.outcome.checked?.subjectsExamined ?? 0,
+          budgetExhausted: plan_.discovery.budgetExhausted,
+        }),
+      );
+      assurance.coverage = summariseCoverage(estimates);
+
+      // The self-test result is built from what the modules actually emitted
+      // during this run, so it reflects the conditions that applied rather than
+      // the conditions in CI.
+      const selfResults = outcome.run.results.map((r) =>
+        scoreFixtures(
+          r.moduleId,
+          FIXTURES,
+          r.outcome.status === 'fail' ? r.outcome.findings : [],
+        ),
+      );
+      assurance.selfTest = buildSelfTestReport(selfResults.filter((s) => s.planted > 0));
+    } catch (assuranceErr) {
+      console.warn(
+        '[scan-worker] assurance layer failed',
+        assuranceErr instanceof Error ? assuranceErr.message : assuranceErr,
+      );
+    }
+
+
     const completedAt = new Date();
     await sb
       .from('jvf_runs')
@@ -366,6 +426,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           markdown: renderMarkdown(outcome.report) + '\n\n' + renderChangeSection(outcome),
           structured: outcome.report,
           changed: outcome.diff === null ? null : outcome.diff.counts,
+          // Carried in the report itself. A degraded detector or a disproved
+          // finding is a fact about the value of THIS report, and burying it in
+          // a server log means the person reading a clean result cannot know it
+          // is worth less than it looks.
+          assurance: {
+            selfTest: assurance.selfTest?.summary ?? null,
+            selfTestPassed: assurance.selfTest?.passed ?? null,
+            challenge: assurance.challenged?.summary ?? null,
+            disproved:
+              assurance.challenged?.disproved.map((d) => ({
+                rule: d.finding.ruleId,
+                subject: d.finding.subject,
+                method: d.method,
+                reason: d.reason,
+              })) ?? [],
+            coverage: assurance.coverage,
+          },
         },
         error: null,
       })
