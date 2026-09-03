@@ -25,6 +25,7 @@ import { infraPostureCheck } from './modules/checks/infra-posture';
 import { commerceIntegrityCheck } from './modules/checks/commerce-integrity';
 import { authFlowCheck } from './modules/checks/auth-flow';
 import { databaseExposureCheck } from './modules/checks/database-exposure';
+import { dataResilienceCheck } from './modules/checks/data-resilience';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -83,6 +84,12 @@ export function buildRegistry(): ModuleRegistry {
   // page. Row-level security is the only thing between a table and the internet:
   // a table with RLS off is not misconfigured, it is published.
   registry.register(databaseExposureCheck);
+
+  // The control every framework asks for and almost nobody tests. A backup that
+  // has never been restored is a hope: the failure modes only appear on the way
+  // back - a schema that has moved on, a dependency order that will not replay,
+  // an encryption key nobody kept.
+  registry.register(dataResilienceCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is

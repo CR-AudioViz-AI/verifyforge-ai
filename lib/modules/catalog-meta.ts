@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'data.resilience',
+    groupId: 'data',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Reads the backup record directly. It reports that a backup EXISTS, is recent and covers what it should - and states plainly that whether it would actually restore is not tested, because proving that means a real drill into an isolated target.',
+    },
+    whyItMatters:
+      'A backup that has never been restored is a hope rather than a control. The failure modes only appear on the way back: a schema that has moved on, a dependency order that will not replay, an encryption key nobody kept. Auditors want evidence a control OPERATED, not a screenshot proving it exists.',
+    evidence:
+      'Recovery plans with no test evidence are among the most commonly cited SOC 2 A1.3 gaps, and they are cited because they are almost always true. This platform backs up 371 tables nightly and no restore had ever been rehearsed as of September 2026.',
+  },
+  {
     moduleId: 'database.exposure',
     groupId: 'data',
     defaultOn: true,
