@@ -26,6 +26,7 @@ import { commerceIntegrityCheck } from './modules/checks/commerce-integrity';
 import { authFlowCheck } from './modules/checks/auth-flow';
 import { databaseExposureCheck } from './modules/checks/database-exposure';
 import { dataResilienceCheck } from './modules/checks/data-resilience';
+import { supplyChainCheck } from './modules/checks/supply-chain';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -90,6 +91,12 @@ export function buildRegistry(): ModuleRegistry {
   // back - a schema that has moved on, a dependency order that will not replay,
   // an encryption key nobody kept.
   registry.register(dataResilienceCheck);
+
+  // Everything the team pulled in rather than wrote. Almost always the larger
+  // surface, and the only part of a codebase that can change while nobody
+  // touches it: a dependency declared as ^1.2.0 is not a version, it is a
+  // subscription.
+  registry.register(supplyChainCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is

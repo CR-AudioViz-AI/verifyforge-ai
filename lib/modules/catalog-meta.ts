@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'supply.chain',
+    groupId: 'supply',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Reads the manifest, the lock file and the served document directly. Each finding is a fact about a file with one clear fix. Known CVEs are deliberately NOT reported: a wall of advisories nobody can act on is how a scanner trains people to ignore it.',
+    },
+    whyItMatters:
+      'This is the only part of a codebase that can change while nobody touches it. A tag is a pointer somebody else controls, and whoever moves it runs code in your CI - which holds your deploy tokens. A third-party script with no integrity hash can serve different code tomorrow, invisible to a code review because the code is not in the repository.',
+    evidence:
+      'Measured on this platform 3 September 2026: every GitHub Action across the org was pinned to a moving tag rather than a commit SHA, and 63 of 65 dependencies in core use ranges rather than exact versions.',
+  },
+  {
     moduleId: 'data.resilience',
     groupId: 'data',
     defaultOn: true,
