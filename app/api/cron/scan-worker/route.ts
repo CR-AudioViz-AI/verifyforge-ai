@@ -32,6 +32,12 @@ import { execute, plan, renderChangeSection } from '@/lib/engine/scan';
 import { renderMarkdown } from '@/lib/modules/report';
 import { buildRegistry } from '@/lib/registry-instance';
 import { getHistoryStore } from '@/lib/store/history-instance';
+import {
+  lessonsFrom,
+  toLearningEvents,
+  technologyOf,
+  type FindingState,
+} from '@/lib/learning/teach-javari';
 import { reserveAndCharge } from '@/lib/api/credits';
 import { createServiceClient, VERIFY_INTENTS } from '@/lib/api/central';
 import type { Target } from '@/lib/modules/target';
@@ -278,6 +284,48 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       await charge.refund();
       await reserveAndCharge(job.owner_id, actual, VERIFY_INTENTS.scan);
     }
+
+    // TEACH JAVARI. 2026-09-03.
+    //
+    // Every scan produces a lesson, and the next scan of the same target says
+    // whether the fix worked — which is the only measured evidence anywhere about
+    // whether a remediation actually holds.
+    //
+    // Failures here are swallowed on purpose. A customer paid for a scan and has
+    // their report; losing a lesson is our problem, and letting it fail the run
+    // would trade their result for our knowledge base.
+    try {
+      const ownership: 'internal' | 'customer' =
+        req.target.authorization?.kind === 'owned' ? 'internal' : 'customer';
+
+      const lessons = lessonsFrom({
+        results: outcome.run.results,
+        // Real per-finding state from the diff, which is what makes a "fixed"
+        // transition evidence rather than a guess. No diff means no history yet,
+        // so every finding is simply new.
+        states: new Map<string, FindingState>(
+          (outcome.diff?.tracked ?? []).map((t) => [t.fingerprint, t.state as FindingState]),
+        ),
+        resolved: (outcome.diff?.tracked ?? [])
+          .filter((t) => t.state === 'fixed')
+          .map((t) => t.fingerprint),
+        ownership,
+        // Customer scans teach nothing until they say otherwise. Silence is not
+        // consent, so this stays false until a consent record exists.
+        consentToLearn: false,
+        technology: technologyOf({}),
+      });
+
+      if (lessons.length > 0) {
+        await sb.from('javari_learning_events').insert(toLearningEvents(lessons));
+      }
+    } catch (learnErr) {
+      console.warn(
+        '[scan-worker] lesson capture failed',
+        learnErr instanceof Error ? learnErr.message : learnErr,
+      );
+    }
+
 
     const completedAt = new Date();
     await sb

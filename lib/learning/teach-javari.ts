@@ -264,3 +264,118 @@ export function toKnowledge(
     } as KnowledgeRow & { _key: string };
   });
 }
+
+// ---------------------------------------------------------------------------
+// SHARING BEYOND THIS PLATFORM
+// ---------------------------------------------------------------------------
+
+/**
+ * The minimum number of DISTINCT targets a pattern must have been seen on before
+ * it may leave this platform.
+ *
+ * Generalising the words is not the same as anonymising the fact. "A Next.js app
+ * behind a particular niche auth provider leaked session tokens" contains no
+ * hostname and still identifies the one customer running that stack. Stripping
+ * identifiers protects against careless disclosure; it does not protect against
+ * inference, and a knowledge base sold to third parties is exactly where
+ * inference gets attempted.
+ *
+ * Five is a judgement, not a standard. It is the point at which a pattern
+ * plausibly describes a class of systems rather than one customer's. Raise it
+ * before lowering it.
+ */
+export const MIN_DISTINCT_TARGETS_TO_SHARE = 5;
+
+export type ShareScope =
+  /** Ours. We own the systems and may do as we like with what we learn. */
+  | 'internal'
+  /** Seen widely enough to describe a class rather than a customer. */
+  | 'shareable'
+  /** Learned from customer systems and not yet common enough to release. */
+  | 'restricted';
+
+export interface ShareableKnowledge {
+  readonly ruleId: string;
+  readonly technology: string;
+  readonly pattern: string;
+  readonly fix: string;
+  readonly timesObserved: number;
+  readonly timesProvenFixed: number;
+  readonly distinctTargets: number;
+  readonly confidence: number;
+  readonly scope: ShareScope;
+  /** Why this scope, in words a person can check. */
+  readonly scopeReason: string;
+}
+
+/**
+ * Decides whether a learned pattern may be published or licensed.
+ *
+ * Fails CLOSED. An unknown provenance is treated as customer-derived, because
+ * the cost of wrongly withholding a lesson is a slightly smaller knowledge base,
+ * and the cost of wrongly releasing one is a customer's security posture in
+ * somebody else's product.
+ */
+export function classifyForSharing(args: {
+  readonly ruleId: string;
+  readonly technology: string;
+  readonly pattern: string;
+  readonly fix: string;
+  readonly timesObserved: number;
+  readonly timesProvenFixed: number;
+  readonly distinctTargets: number;
+  /** True only when every observation came from a system we own. */
+  readonly allObservationsInternal: boolean;
+}): ShareableKnowledge {
+  const confidence =
+    args.timesObserved === 0
+      ? 0.5
+      : Math.min(0.5 + (args.timesProvenFixed / args.timesObserved) * 0.5, 0.99);
+
+  let scope: ShareScope;
+  let scopeReason: string;
+
+  if (args.allObservationsInternal) {
+    scope = 'internal';
+    scopeReason =
+      'Every observation came from systems this company owns, so there is no third party whose posture could be inferred from it.';
+  } else if (args.distinctTargets >= MIN_DISTINCT_TARGETS_TO_SHARE) {
+    scope = 'shareable';
+    scopeReason =
+      `Observed on ${args.distinctTargets} distinct targets, which is at or above the ` +
+      `${MIN_DISTINCT_TARGETS_TO_SHARE}-target threshold. At that spread the pattern describes a class of ` +
+      'systems rather than any one customer.';
+  } else {
+    scope = 'restricted';
+    scopeReason =
+      `Seen on only ${args.distinctTargets} distinct target(s). Generalising the words does not anonymise ` +
+      'the fact: a rare defect on a rare stack identifies whoever runs it, however carefully the sentence ' +
+      'is written. Held until it is common enough to describe a class.';
+  }
+
+  return {
+    ruleId: args.ruleId,
+    technology: args.technology,
+    pattern: args.pattern,
+    fix: args.fix,
+    timesObserved: args.timesObserved,
+    timesProvenFixed: args.timesProvenFixed,
+    distinctTargets: args.distinctTargets,
+    confidence,
+    scope,
+    scopeReason,
+  };
+}
+
+/**
+ * The set safe to publish or license externally.
+ *
+ * Internal patterns are included because we own those systems. Restricted ones
+ * never are, and the caller does not get to override that — a flag that can turn
+ * this off is a flag someone eventually turns off.
+ */
+export function exportableKnowledge(
+  all: readonly ShareableKnowledge[],
+): ShareableKnowledge[] {
+  return all.filter((k) => k.scope === 'internal' || k.scope === 'shareable');
+}
