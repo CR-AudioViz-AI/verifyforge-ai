@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'web.discoverability',
+    groupId: 'performance',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Reads the served document, robots.txt and sitemap.xml. Every finding is a fact about a file with one fix. No score is produced - a score nobody can act on is the same failure as a wall of unreachable CVEs.',
+    },
+    whyItMatters:
+      'An app with no title, no canonical and no sitemap is functioning perfectly and earning nothing. The worst case is a robots.txt with Disallow: / that reached production from staging - the site works, cannot be found, and nothing breaks to announce it.',
+    evidence:
+      'Measured across 22 live sites on this platform 4 September 2026: 22 had titles, 19 had canonicals, 19 had a sitemap and 19 had robots.txt - so real gaps existed on roughly one site in seven.',
+  },
+  {
     moduleId: 'supply.chain',
     groupId: 'supply',
     defaultOn: true,

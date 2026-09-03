@@ -27,6 +27,7 @@ import { authFlowCheck } from './modules/checks/auth-flow';
 import { databaseExposureCheck } from './modules/checks/database-exposure';
 import { dataResilienceCheck } from './modules/checks/data-resilience';
 import { supplyChainCheck } from './modules/checks/supply-chain';
+import { discoverabilityCheck } from './modules/checks/discoverability';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -97,6 +98,12 @@ export function buildRegistry(): ModuleRegistry {
   // touches it: a dependency declared as ^1.2.0 is not a version, it is a
   // subscription.
   registry.register(supplyChainCheck);
+
+  // Every other module asks whether the system works. This asks whether the work
+  // reaches anybody. An app with no title, no canonical and no sitemap is
+  // functioning perfectly and earning nothing, and that failure is invisible to
+  // every check that only looks at behaviour.
+  registry.register(discoverabilityCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is
