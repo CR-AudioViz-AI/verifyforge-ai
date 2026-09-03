@@ -180,6 +180,22 @@ export const authFlowCheck: CheckModule = {
       // for lacking HttpOnly is the kind of noise that makes people stop reading.
       if (!/sess|auth|token|sb-|jwt|sid/i.test(name)) continue;
 
+      // 2026-09-04: A NAME IS NOT A PURPOSE.
+      //
+      // This matched `zsid` on javarimanage.com and reported it as a session
+      // cookie missing HttpOnly. It is an attribution identifier, deliberately
+      // readable by the client, and it already carries Secure and SameSite — the
+      // codebase says so in a comment at the point it is set.
+      //
+      // A cookie carrying Secure and SameSite but NOT HttpOnly is far more often
+      // a deliberate client-readable value than a mistake; a genuine session
+      // cookie left unprotected is usually missing all three. So that case is
+      // reported as a question rather than a verdict.
+      const hasSecureFlag = /;\s*Secure/i.test(cookie);
+      const hasSameSiteFlag = /;\s*SameSite=/i.test(cookie);
+      const onlyHttpOnlyMissing =
+        hasSecureFlag && hasSameSiteFlag && !/;\s*HttpOnly/i.test(cookie);
+
       const missing: string[] = [];
       if (!/;\s*Secure/i.test(cookie)) missing.push('Secure');
       if (!/;\s*HttpOnly/i.test(cookie)) missing.push('HttpOnly');
@@ -188,8 +204,10 @@ export const authFlowCheck: CheckModule = {
       if (missing.length > 0) {
         problems.push({
           ruleId: 'auth.cookie.flags',
-          severity: missing.includes('HttpOnly') ? 'HIGH' : 'MEDIUM',
-          title: `Session cookie "${name}" is missing ${missing.join(', ')}`,
+          severity: onlyHttpOnlyMissing ? 'LOW' : missing.includes('HttpOnly') ? 'HIGH' : 'MEDIUM',
+          title: onlyHttpOnlyMissing
+            ? `Cookie "${name}" is readable by scripts — confirm that is intended`
+            : `Session cookie "${name}" is missing ${missing.join(', ')}`,
           description:
             'Without HttpOnly any script on the page can read the session, so one cross-site scripting bug becomes account takeover rather than a defacement. Without Secure it travels over plaintext on the first request after a cold start. Without SameSite it rides along on cross-site requests, which is what CSRF is.',
           fix: `Set ${missing.join(', ')} on this cookie. SameSite=Lax is the right default; use None only with Secure and a real cross-site need.`,
