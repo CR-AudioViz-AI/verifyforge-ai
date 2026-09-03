@@ -157,6 +157,50 @@ export const supplyChainCheck: CheckModule = {
             });
           }
 
+          // 2026-09-04: DOES EACH PACKAGE ACTUALLY EXIST?
+          //
+          // javari-partners-portal declared @radix-ui/react-badge. npm returns 404
+          // for it and always has — Radix has no react-badge primitive, Badge is a
+          // shadcn component built on plain markup. It was never imported
+          // anywhere and it made `npm install` fail outright, so that project
+          // could never build.
+          //
+          // It was then ARCHIVED, which hid the cause: every fleet-wide pass
+          // skipped the repo because GitHub rejected the push, while the domain
+          // kept serving an older deployment. The build had been impossible for
+          // weeks and nothing said so.
+          //
+          // A declared dependency that does not exist is not a version problem.
+          // It is a build that can never succeed, and it is one HEAD request to
+          // find out.
+          const nonExistent: string[] = [];
+          for (const name of names.slice(0, 60)) {
+            try {
+              const res = await fetch(
+                `https://registry.npmjs.org/${name.replace(/\//g, '%2f')}`,
+                { method: 'HEAD', signal: AbortSignal.timeout(8_000) },
+              );
+              if (res.status === 404) nonExistent.push(name);
+            } catch {
+              // A network failure is not evidence the package is missing, so it
+              // is skipped rather than reported. A false claim that a dependency
+              // does not exist would send someone to delete a working one.
+            }
+          }
+
+          if (nonExistent.length > 0) {
+            problems.push({
+              ruleId: 'supply.dep.nonexistent',
+              severity: 'BLOCKER',
+              title: `${nonExistent.length} declared dependency(ies) do not exist on the registry`,
+              description:
+                'The registry returns 404 for these names, so `npm install` fails and the project cannot build at all. This is usually a package name that was invented rather than looked up — a plausible-sounding scope and name that was never published.\n\n' +
+                'It also has a security dimension: a name that does not exist today can be REGISTERED BY ANYBODY TOMORROW, and the next successful install would fetch their code.',
+              fix: 'Remove each one, or replace it with the package that actually provides the functionality. Check whether it is imported anywhere first — frequently it is not.',
+              detail: nonExistent.join(', '),
+            });
+          }
+
           // The lock file is what actually gets installed. A manifest without
           // one means the reviewed versions and the installed versions are
           // unrelated.
