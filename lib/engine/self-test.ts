@@ -378,9 +378,35 @@ export async function serveFixtures(fixtures: readonly Fixture[]): Promise<Fixtu
         return;
       }
 
-      // A document fixture answers at the root. Conventional siblings 404
-      // honestly rather than echoing the fixture, because a module that reads a
-      // sitemap and receives HTML should see exactly that.
+      // 2026-09-04: a fixture is a SITE, not a page.
+      //
+      // hollow-response compares each route against the site median, because a
+      // deliberately sparse page on a deliberately sparse site is intentional
+      // rather than broken. A single-route fixture has no median - the one page
+      // IS the median - so nothing can look anomalous and the detector correctly
+      // found nothing. Reported as a miss, it looked like a broken check.
+      //
+      // Each fixture now serves several ordinary sibling pages alongside the
+      // defective one, so a median exists and the defect stands out from it the
+      // way it would on a real site.
+      if (/^\/normal-\d+$/.test(sub)) {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(
+          '<!DOCTYPE html><html lang="en"><head><title>Ordinary page</title></head><body>' +
+            '<h1>Ordinary page</h1>' +
+            '<p>This sibling exists so the fixture has a site median to compare against. ' +
+            'It carries enough ordinary prose that a genuinely hollow page reads as the outlier ' +
+            'it is, rather than as one sparse page among equally sparse ones.</p>' +
+            '<p>Without siblings, a check that reasons about a site cannot reason at all, and its ' +
+            'silence would be scored as a failure to detect.</p>' +
+            '<ul><li>One</li><li>Two</li><li>Three</li></ul></body></html>',
+        );
+        return;
+      }
+
+      // A document fixture answers at the root. Other siblings 404 honestly
+      // rather than echoing the fixture, because a module that reads a sitemap
+      // and receives HTML should see exactly that.
       if (sub === '/') {
         res.writeHead(200, {
           'content-type': 'text/html',

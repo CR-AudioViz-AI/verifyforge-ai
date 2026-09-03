@@ -108,7 +108,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             inputs: {
               url: `${server.origin}/f${i}/`,
               origin: `${server.origin}/f${i}/`,
-              routes: `${server.origin}/f${i}/`,
+              // The defective route plus ordinary siblings, so checks that
+              // reason about a SITE have a site to reason about.
+              routes: [
+                `${server.origin}/f${i}/`,
+                `${server.origin}/f${i}/normal-1`,
+                `${server.origin}/f${i}/normal-2`,
+                `${server.origin}/f${i}/normal-3`,
+              ].join('\n'),
             },
             budget: { maxRequests: 20, maxWallClockMs: 15_000 },
             signal: AbortSignal.timeout(20_000),
