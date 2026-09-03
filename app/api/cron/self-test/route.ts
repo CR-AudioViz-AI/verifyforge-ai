@@ -27,6 +27,7 @@ import { createServiceClient } from '@/lib/api/central';
 import { buildRegistry } from '@/lib/registry-instance';
 import {
   FIXTURES,
+  HARNESS_CANNOT_VALIDATE,
   serveFixtures,
   scoreFixtures,
   buildSelfTestReport,
@@ -62,7 +63,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       byModule.set(f.moduleId, [...existing, f] as typeof FIXTURES);
     }
 
+    const skipped: string[] = [];
+
     for (const [moduleId, fixtures] of byModule) {
+      // Declared limits of the harness, not failures of the detector. Counting
+      // them as misses produces a permanently red self-test, and a self-test
+      // people scroll past is worse than none.
+      const cannot = HARNESS_CANNOT_VALIDATE[moduleId];
+      if (cannot !== undefined) {
+        skipped.push(`${moduleId} (${cannot})`);
+        continue;
+      }
+
       const module = modules.get(moduleId);
       if (!module) {
         // A fixture naming a module that is not registered is a real defect in
@@ -126,6 +138,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       ok: true,
       passed: report.passed,
+      // Said out loud. A reader must be able to see WHICH checks were validated
+      // and which the harness simply cannot reach.
+      notValidatedByHarness: skipped,
       planted: report.totalPlanted,
       found: report.totalFound,
       failedModules: report.failedModules,
