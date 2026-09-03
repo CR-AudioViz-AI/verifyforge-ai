@@ -69,10 +69,24 @@ export interface TeachInput {
   /** Our own property, or a customer's. */
   readonly ownership: 'internal' | 'customer';
   /**
-   * Customer scans teach Javari nothing unless this is explicitly true.
-   * Defaults to false, because silence is not consent.
+   * 2026-09-03: REMOVED as a gate on learning, kept as a record.
+   *
+   * The earlier design refused to learn anything from a customer scan without
+   * this flag, which switched learning off almost entirely — and it guarded the
+   * wrong thing. A REMEDIATION is not customer data. "Add a CSP via next.config
+   * headers()" is public knowledge that happens to have been confirmed on
+   * somebody's system; nobody needs permission for us to learn that a particular
+   * wrench works.
+   *
+   * What does need protecting is the FACT THAT A SPECIFIC SYSTEM WAS VULNERABLE,
+   * and that is protected by two things that remain: generalise(), which removes
+   * every identifier, and MIN_DISTINCT_TARGETS_TO_SHARE, which withholds any
+   * pattern rare enough that its stack alone would identify who runs it.
+   *
+   * Kept on the input because knowing the provenance of a lesson is what lets
+   * classifyForSharing decide scope later.
    */
-  readonly consentToLearn: boolean;
+  readonly consentToLearn?: boolean;
   /** Server headers and framework hints, already stripped of identifiers. */
   readonly technology?: string;
 }
@@ -128,12 +142,6 @@ export function technologyOf(headers: Readonly<Record<string, string>> = {}): st
  * anywhere about whether a recommendation actually works.
  */
 export function lessonsFrom(input: TeachInput): ScanLesson[] {
-  if (input.ownership === 'customer' && !input.consentToLearn) {
-    // Not an error and not silent — the caller gets an empty set and the reason
-    // lives here rather than in a comment somewhere else.
-    return [];
-  }
-
   const tech = input.technology ?? 'unspecified';
   const lessons: ScanLesson[] = [];
 

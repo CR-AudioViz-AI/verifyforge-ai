@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'infra.posture',
+    groupId: 'supply',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Reads the hosting account directly. A finding is a fact about a project setting. A project that cannot be read is reported inconclusive, never clean.',
+    },
+    whyItMatters:
+      'The defects that cost the most live where neither the code nor the page can show them: a cron rejecting every invocation because its secret was never set, preview builds serving live production data to anyone with the URL, a project deploying from a repository that does not exist.',
+    evidence:
+      'Found on this platform on 2 September 2026 — a scan worker returned 401 to its own scheduler every two minutes from the day it was created, because CRON_SECRET was never set on that project. The platform does not alert on a failing cron, so the async scan spine had never executed once.',
+  },
+  {
     moduleId: 'platform.posture',
     groupId: 'supply',
     defaultOn: true,

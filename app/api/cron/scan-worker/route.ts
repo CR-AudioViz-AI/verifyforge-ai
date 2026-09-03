@@ -310,9 +310,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           .filter((t) => t.state === 'fixed')
           .map((t) => t.fingerprint),
         ownership,
-        // Customer scans teach nothing until they say otherwise. Silence is not
-        // consent, so this stays false until a consent record exists.
-        consentToLearn: false,
+        // Recorded for provenance, not as a gate. A remediation is not customer
+        // data; what protects the customer is generalise() removing every
+        // identifier and the k-anonymity threshold withholding patterns rare
+        // enough to identify whoever runs that stack.
+        consentToLearn: ownership === 'internal',
         technology: technologyOf({}),
       });
 

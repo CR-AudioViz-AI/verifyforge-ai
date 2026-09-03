@@ -21,6 +21,7 @@ import { modelGeometryCheck } from './modules/checks/model-geometry';
 import { aiSafetyCheck } from './modules/checks/ai-safety';
 import { accessibilityCheck } from './modules/checks/accessibility';
 import { platformPostureCheck } from './modules/checks/platform-posture';
+import { infraPostureCheck } from './modules/checks/infra-posture';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -62,6 +63,7 @@ export function buildRegistry(): ModuleRegistry {
   // a production site serving from an archived repo, a cron 401ing since creation.
   // Found by hand, once, with nothing to catch them recurring.
   registry.register(platformPostureCheck);
+  registry.register(infraPostureCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is
