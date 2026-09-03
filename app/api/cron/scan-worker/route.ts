@@ -32,7 +32,7 @@ import { execute, plan, renderChangeSection } from '@/lib/engine/scan';
 import { renderMarkdown } from '@/lib/modules/report';
 import { buildRegistry } from '@/lib/registry-instance';
 import { getHistoryStore } from '@/lib/store/history-instance';
-import { FIXTURES, scoreFixtures, buildSelfTestReport, type SelfTestReport } from '@/lib/engine/self-test';
+import { selfTestUnavailable, type SelfTestReport } from '@/lib/engine/self-test';
 import { challengeAll, type AdversarialReport } from '@/lib/engine/adversarial';
 import { estimateCoverage, summariseCoverage } from '@/lib/engine/coverage';
 import {
@@ -370,17 +370,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
       assurance.coverage = summariseCoverage(estimates);
 
-      // The self-test result is built from what the modules actually emitted
-      // during this run, so it reflects the conditions that applied rather than
-      // the conditions in CI.
-      const selfResults = outcome.run.results.map((r) =>
-        scoreFixtures(
-          r.moduleId,
-          FIXTURES,
-          r.outcome.status === 'fail' ? r.outcome.findings : [],
-        ),
+      // 2026-09-04: the first version of this scored the fixtures against the
+      // findings from the REAL target, which asked "did scanning the customer's
+      // site produce the rules my fixtures expect?" — a nonsense question that
+      // answered SELF-TEST FAILED on a working scanner.
+      //
+      // Executing fixtures properly means serving them and running the modules
+      // against them, which is real work and does not belong inside the customer's
+      // scan. Until that runs as its own job, this reports UNAVAILABLE rather than
+      // a made-up verdict: "we could not check whether the checks work" and "the
+      // checks work" are different statements.
+      assurance.selfTest = selfTestUnavailable(
+        'fixture execution runs as a separate job and did not run for this scan',
       );
-      assurance.selfTest = buildSelfTestReport(selfResults.filter((s) => s.planted > 0));
     } catch (assuranceErr) {
       console.warn(
         '[scan-worker] assurance layer failed',

@@ -253,3 +253,103 @@ export function verdictAfterSelfTest(
       report.summary,
   };
 }
+
+// ---------------------------------------------------------------------------
+// EXECUTING THE FIXTURES
+// ---------------------------------------------------------------------------
+
+/**
+ * 2026-09-04: the first wiring of this was wrong in a way worth recording.
+ *
+ * It scored the fixtures against the findings the modules produced from the REAL
+ * target — effectively asking "did scanning this customer's site produce the rules
+ * my fixtures expect?" That is a nonsense question, and it answered SELF-TEST
+ * FAILED, 0 of 4 planted defects found, on a scanner that was working correctly.
+ *
+ * Which is precisely the failure the fixture guard was written to prevent, at a
+ * level the guard could not see: the fixtures were valid, and they were never run.
+ *
+ * A self-test only means something if the fixture material is actually put
+ * through the detector. That requires serving the fixtures somewhere the module
+ * can fetch them, because these modules examine live responses rather than
+ * strings — which is the same reason LUCY plants its defects in a disposable copy
+ * rather than asserting over a report.
+ */
+
+export interface FixtureServer {
+  /** Origin the fixtures are served from, e.g. http://127.0.0.1:41234 */
+  readonly origin: string;
+  /** Shuts the server down. Always called, including on failure. */
+  readonly close: () => Promise<void>;
+}
+
+/**
+ * Serves the fixtures over loopback so a module can fetch them exactly as it
+ * fetches a real target.
+ *
+ * Loopback only, on an ephemeral port, torn down when the run ends. Nothing is
+ * exposed and nothing is planted in anybody's system.
+ */
+export async function serveFixtures(fixtures: readonly Fixture[]): Promise<FixtureServer | null> {
+  try {
+    const http = await import('node:http');
+
+    const routes = new Map<string, Fixture>();
+    fixtures.forEach((f, i) => routes.set(`/fixture-${i}`, f));
+
+    const server = http.createServer((req, res) => {
+      const fixture = routes.get((req.url ?? '').split('?')[0] ?? '');
+      if (!fixture) {
+        res.writeHead(404, { 'content-type': 'text/plain' });
+        res.end('not a fixture');
+        return;
+      }
+      res.writeHead(200, {
+        'content-type': fixture.material.startsWith('User-agent') ? 'text/plain' : 'text/html',
+        ...(fixture.headers ?? {}),
+      });
+      res.end(fixture.material);
+    });
+
+    const port: number = await new Promise((resolve, reject) => {
+      server.on('error', reject);
+      server.listen(0, '127.0.0.1', () => {
+        const addr = server.address();
+        if (addr && typeof addr === 'object') resolve(addr.port);
+        else reject(new Error('no port assigned'));
+      });
+    });
+
+    return {
+      origin: `http://127.0.0.1:${port}`,
+      close: () =>
+        new Promise((resolve) => {
+          server.close(() => resolve());
+        }),
+    };
+  } catch {
+    // A self-test that cannot start is reported as absent, never as passed.
+    return null;
+  }
+}
+
+/**
+ * The report for a run where fixtures could not be executed.
+ *
+ * Explicitly NOT a pass. "We could not check whether the checks work" and "the
+ * checks work" are different statements, and collapsing them is the exact
+ * dishonesty this whole file exists to prevent.
+ */
+export function selfTestUnavailable(reason: string): SelfTestReport {
+  return {
+    results: [],
+    totalPlanted: 0,
+    totalFound: 0,
+    failedModules: [],
+    passed: false,
+    summary:
+      `No self-test ran on this scan (${reason}), so nothing here demonstrates the checks were working. ` +
+      'That is not the same as the checks having failed — it means a clean result carries less weight than one ' +
+      'that was validated.',
+  };
+}
