@@ -23,6 +23,7 @@ import { accessibilityCheck } from './modules/checks/accessibility';
 import { platformPostureCheck } from './modules/checks/platform-posture';
 import { infraPostureCheck } from './modules/checks/infra-posture';
 import { commerceIntegrityCheck } from './modules/checks/commerce-integrity';
+import { authFlowCheck } from './modules/checks/auth-flow';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -71,6 +72,11 @@ export function buildRegistry(): ModuleRegistry {
   // silent by design. A webhook handler that accepts a forged event does not
   // error and does not slow down. It simply grants what it was asked to grant.
   registry.register(commerceIntegrityCheck);
+
+  // Account takeover. Header defects degrade defences; an OAuth callback that
+  // honours an attacker-supplied redirect hands over the authorisation code, and
+  // the code is the account. There is no partial version of that failure.
+  registry.register(authFlowCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is

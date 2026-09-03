@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'auth.flow',
+    groupId: 'access',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'An endpoint either builds its redirect from a fixed origin or from the request. Ask it to point elsewhere and read where it actually points — one request, unambiguous answer. An origin with no sign-in endpoint is reported inconclusive, never pass.',
+    },
+    whyItMatters:
+      'An attacker sends a victim a link to YOUR domain, the victim signs in legitimately, and the authorisation code is delivered to the attacker. The code is the account, and every visible signal in the flow says the site is genuine.',
+    evidence:
+      'Probed on this platform on 3 September 2026: the Discord, Microsoft and LinkedIn start endpoints all build redirect_to from a hardcoded origin and ignore next, redirect_to and returnTo entirely, so poisoning is impossible. The check exists to keep that true.',
+  },
+  {
     moduleId: 'commerce.integrity',
     groupId: 'payments',
     defaultOn: true,
