@@ -151,8 +151,9 @@ export const sourceOfTruthCheck: CheckModule = {
     { name: 'origin', description: 'The origin to check.', required: true, kind: 'origin' },
     {
       name: 'endpoints',
-      description: 'Newline-separated JSON paths that publish overlapping values, e.g. /api/pricing and /api/pricing/tiers.',
-      required: false,
+      description:
+        'Newline-separated JSON paths that publish overlapping values — for example the endpoint your pricing page reads and the one your checkout reads. Required: these are never guessed, because a guessed path that misses returns the same silence as an estate that has no such endpoint.',
+      required: true,
       kind: 'origin',
     },
   ],
@@ -174,12 +175,37 @@ export const sourceOfTruthCheck: CheckModule = {
     }
     const origin = raw.replace(/\/+$/, '');
 
-    // Common places a platform publishes the same figures twice. Discovered
-    // rather than assumed would be better; this is the honest starting set.
-    const DEFAULTS = ['/api/pricing', '/api/pricing/tiers', '/api/plans', '/api/tiers', '/api/credits/packs'];
-    const paths = String(context.inputs?.['endpoints'] ?? '')
+    // 2026-09-04: the guessed default list is gone, and nothing replaced it.
+    //
+    // It held /api/pricing, /api/pricing/tiers and /api/plans - the paths THIS
+    // platform happens to use. On any other estate that list finds nothing, and a
+    // check that examines nothing returns a clean pass. For a tool whose whole
+    // purpose is refusing to say fine when it does not know, that is the worst
+    // failure available.
+    //
+    // A discovery pass was written to replace it - OpenAPI documents, then paths
+    // in the page markup - and it was TESTED before shipping. It found zero
+    // endpoints on three sites including this platform's own, because modern
+    // applications put their fetch calls in bundled JavaScript rather than the
+    // served HTML. Shipping it would have produced the same silent nothing with
+    // more machinery in front of it.
+    //
+    // So the endpoints are required. Without them this check says it did not run,
+    // which is true, instead of saying everything agrees, which would not be.
+    const targets = String(context.inputs?.['endpoints'] ?? '')
       .split('\n').map((s) => s.trim()).filter(Boolean);
-    const targets = paths.length > 0 ? paths : DEFAULTS;
+
+    if (targets.length < 2) {
+      return {
+        status: 'inconclusive',
+        reason:
+          'This check needs at least two endpoints that publish overlapping values, and they must be named — they are not guessed. ' +
+          'Supply them as newline-separated paths, for example the endpoint your pricing page reads and the one your checkout reads. ' +
+          'Nothing was examined, so nothing is concluded.',
+        findings: [],
+        checked: { subjectsExamined: 0, requestsIssued: 0, notes: `${targets.length} endpoint(s) supplied; two are the minimum.` },
+      };
+    }
 
     let requests = 0;
     const published: Published[] = [];

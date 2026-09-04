@@ -104,6 +104,7 @@ export const authFlowCheck: CheckModule = {
     'Whether a password reset token expires or can be reused. That requires triggering a real reset for a real account, which this will not do.',
     'Account enumeration through timing. Distinguishing a real from a fake account by response time needs many samples and is easily confounded by network noise.',
     'Multi-factor enforcement, which is only observable after a successful primary authentication.',
+    'An authentication flow at a path this does not probe. The paths tried are the NextAuth and Supabase conventions - /api/auth/<provider>, /auth/callback, /auth/confirm, /auth/signin - because those cover most of what is deployed, not because they are universal. An application routing its login through /login/google or /sso/start is not examined, and a clean result here says those conventional paths are sound, not that the application has no open redirect. Name the real paths if they differ.',
   ],
 
   supportedTargetKinds: ['web_property', 'auth_provider'],

@@ -119,7 +119,7 @@ export const databaseExposureCheck: CheckModule = {
   intrusive: false,
 
   inputs: [
-    { name: 'restUrl', description: 'PostgREST base, e.g. https://ref.supabase.co/rest/v1', required: true, kind: 'origin' },
+    { name: 'restUrl', description: 'PostgREST base URL. Any PostgREST deployment works - Supabase is one, a self-hosted PostgREST is another. Example: https://<host>/rest/v1', required: true, kind: 'origin' },
     { name: 'publishableKey', description: 'The key that ships in the browser bundle.', required: true, kind: 'credentials' },
     { name: 'tables', description: 'Comma-separated table names to probe.', required: false, kind: 'origin' },
   ],
