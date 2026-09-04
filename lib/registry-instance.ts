@@ -29,6 +29,7 @@ import { dataResilienceCheck } from './modules/checks/data-resilience';
 import { supplyChainCheck } from './modules/checks/supply-chain';
 import { discoverabilityCheck } from './modules/checks/discoverability';
 import { scopeCoverageCheck } from './modules/checks/scope-coverage';
+import { functionIntegrityCheck } from './modules/checks/function-integrity';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -111,6 +112,12 @@ export function buildRegistry(): ModuleRegistry {
   // on a host nobody had ever scanned. The check that would have caught it was
   // working correctly the whole time - it was never pointed at that host.
   registry.register(scopeCoverageCheck);
+
+  // 2026-09-04: two functions on this platform - the ones that take a customer's
+  // credits and give them back - had NEVER worked. Both referenced a column that
+  // does not exist. PostgreSQL resolves function bodies at run time, so they
+  // installed cleanly and failed silently on every call for months.
+  registry.register(functionIntegrityCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is

@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'db.function-integrity',
+    groupId: 'data',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Resolves every table.column reference and INSERT column list in every public-schema function against information_schema. A named column either exists or it does not - there is nothing to interpret.',
+    },
+    whyItMatters:
+      'PostgreSQL does not validate a function body against the schema when the function is created. It resolves columns at run time, so a function can reference a column dropped years ago and still install cleanly. Nothing fails until somebody calls it, and by then the caller usually sees a boolean.',
+    evidence:
+      'Measured on this platform 4 September 2026: debit_credits and refund_credits - the code paths that take a customer\'s credits and return them - both selected profiles.is_admin, which does not exist, and both inserted operation and metadata into a table with neither. Every call raised 42703. No credit was ever debited or refunded through them. Both had row locking, an admin bypass and an audit trail; a code review would have passed them. Only running them found it.',
+  },
+  {
     moduleId: 'scope.coverage',
     groupId: 'performance',
     defaultOn: true,
