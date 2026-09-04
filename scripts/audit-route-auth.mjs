@@ -126,7 +126,25 @@ const SECRET_DEFAULT = [
   /!==\s*["'`](javari-admin|javari-cron)[^"'`\n]*["'`]/,
   /["'`](javari-admin|javari-cron)[^"'`\n]*["'`]\s*!==/,
 ];
-const any = (arr, s) => arr.some((r) => r.test(s));
+// 2026-09-04: comments are stripped before any pattern runs.
+//
+// This guard reported app/api/enrichment/spirits as CRITICAL after that route had
+// already been FIXED, because the fix carries a comment explaining the old
+// pattern - and the comment contains the pattern.
+//
+// A guard that cannot tell code from an explanation of code punishes documenting
+// the fix. Every honest comment about a defect would have to be written in
+// euphemism to avoid tripping it, which is a worse outcome than the false
+// positive.
+const stripComments = (src) =>
+  src
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+const any = (arr, s) => {
+  const code = stripComments(s);
+  return arr.some((r) => r.test(code));
+};
 
 // All function/arrow definitions with their start offsets, for clean body slicing
 // and to resolve gates that live in a helper the handler calls.
