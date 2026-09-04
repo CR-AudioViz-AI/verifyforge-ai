@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'api.false-success',
+    groupId: 'integrity',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Requests a path that cannot exist, asking for JSON. A success status carrying a web page is not an interpretation - it means every client sees a deleted endpoint as a working one.',
+    },
+    whyItMatters:
+      'It breaks nothing by itself. It removes the ability of every client to notice that something else is broken: a renamed route, a deleted handler, a typo in a fetch call all become silent successes.',
+    evidence:
+      'Measured 4 September 2026. On this platform a live resume builder had a real form - somebody could type their resume, press submit, and be told complete, while nothing was sent, because the endpoint had never been built. Tested against four origins: two of this estate answered a nonexistent POST with 200 and a web page, one third-party site did the same on one prefix, and github.com answered honestly with 404 and 422 throughout.',
+  },
+  {
     moduleId: 'data.source-of-truth',
     groupId: 'data',
     defaultOn: true,

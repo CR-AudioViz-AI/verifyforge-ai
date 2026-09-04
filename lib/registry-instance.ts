@@ -31,6 +31,7 @@ import { discoverabilityCheck } from './modules/checks/discoverability';
 import { scopeCoverageCheck } from './modules/checks/scope-coverage';
 import { functionIntegrityCheck } from './modules/checks/function-integrity';
 import { sourceOfTruthCheck } from './modules/checks/source-of-truth';
+import { falseSuccessCheck } from './modules/checks/false-success';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -123,6 +124,11 @@ export function buildRegistry(): ModuleRegistry {
   // 2026-09-04: /api/pricing served Business at $79.99 while /api/pricing/tiers
   // served a Premium at $99.99 that exists in no table. Both live, both 200.
   registry.register(sourceOfTruthCheck);
+
+  // 2026-09-04: a live resume builder told people their work was saved. It posted
+  // to a route that did not exist, the catch-all page answered 200, and
+  // response.ok was true. A false success is worse than an error.
+  registry.register(falseSuccessCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is
