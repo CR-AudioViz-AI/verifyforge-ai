@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'scope.coverage',
+    groupId: 'performance',
+    defaultOn: true,
+    signal: {
+      quality: 'broad',
+      note:
+        'Discovers related hostnames from certificate transparency and the page\'s own links, then reports the live ones not in scope. It never scans them - there is no authorisation, and scanning an origin the customer did not name is behaviour a security product must never exhibit.',
+    },
+    whyItMatters:
+      'A clean report on part of an estate reads exactly like a clean report on all of it. Every other honesty mechanism here governs what a scan says about what it examined; none of them says anything about what was never handed to it.',
+    evidence:
+      'Measured on this platform: an OAuth open redirect was found and fixed across eight repositories on 3 and 4 September, declared closed, and found LIVE on 6 September on rateunlock.com - a host that had never been scanned. The auth-flow check probes that exact route and that exact parameter. It was never pointed at that host.',
+  },
+  {
     moduleId: 'web.discoverability',
     groupId: 'performance',
     defaultOn: true,

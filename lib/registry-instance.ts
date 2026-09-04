@@ -28,6 +28,7 @@ import { databaseExposureCheck } from './modules/checks/database-exposure';
 import { dataResilienceCheck } from './modules/checks/data-resilience';
 import { supplyChainCheck } from './modules/checks/supply-chain';
 import { discoverabilityCheck } from './modules/checks/discoverability';
+import { scopeCoverageCheck } from './modules/checks/scope-coverage';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -104,6 +105,12 @@ export function buildRegistry(): ModuleRegistry {
   // functioning perfectly and earning nothing, and that failure is invisible to
   // every check that only looks at behaviour.
   registry.register(discoverabilityCheck);
+
+  // The most expensive lesson in this product: an OAuth open redirect was fixed
+  // across eight repositories, declared closed, and found live three days later
+  // on a host nobody had ever scanned. The check that would have caught it was
+  // working correctly the whole time - it was never pointed at that host.
+  registry.register(scopeCoverageCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is
