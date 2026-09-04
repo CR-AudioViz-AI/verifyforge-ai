@@ -30,6 +30,7 @@ import { supplyChainCheck } from './modules/checks/supply-chain';
 import { discoverabilityCheck } from './modules/checks/discoverability';
 import { scopeCoverageCheck } from './modules/checks/scope-coverage';
 import { functionIntegrityCheck } from './modules/checks/function-integrity';
+import { sourceOfTruthCheck } from './modules/checks/source-of-truth';
 import { exposedSecretsCheck } from './modules/checks/exposed-secrets';
 import { securityPostureCheck } from './modules/checks/security-posture';
 
@@ -118,6 +119,10 @@ export function buildRegistry(): ModuleRegistry {
   // does not exist. PostgreSQL resolves function bodies at run time, so they
   // installed cleanly and failed silently on every call for months.
   registry.register(functionIntegrityCheck);
+
+  // 2026-09-04: /api/pricing served Business at $79.99 while /api/pricing/tiers
+  // served a Premium at $99.99 that exists in no table. Both live, both 200.
+  registry.register(sourceOfTruthCheck);
 
   // The `secrets` group had no check behind it. This one scans what was SERVED
   // rather than what is in the repo — a different set, and the difference is

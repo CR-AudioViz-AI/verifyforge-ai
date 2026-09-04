@@ -230,6 +230,20 @@ export const CHECK_META: readonly CheckMeta[] = [
       'Found on this platform\u2019s own /api/billing/webhook on 2 September 2026 — it 308-redirected to itself.',
   },
   {
+    moduleId: 'data.source-of-truth',
+    groupId: 'data',
+    defaultOn: true,
+    signal: {
+      quality: 'precise',
+      note:
+        'Compares named values across endpoints and reports any that differ. It never decides which is right - only the owner knows which figure they meant, and a scanner that guessed would tell somebody to correct the correct one.',
+    },
+    whyItMatters:
+      'A customer shown one price and charged another is a chargeback and a complaint, and from outside it is indistinguishable from deliberate. The dangerous version is the one harming nobody yet: a plausible endpoint with the wrong numbers, waiting for a page to be wired to it.',
+    evidence:
+      'Measured on this platform 4 September 2026: /api/pricing served Business at $79.99 from the database while /api/pricing/tiers served a hardcoded Premium at $99.99 that exists in no table, alongside a Starter and a Free Forever that do not exist either. Both endpoints were live and returned 200. Nothing customer-facing called the second, so no customer had been shown a wrong price - which is exactly why it had survived.',
+  },
+  {
     moduleId: 'db.function-integrity',
     groupId: 'data',
     defaultOn: true,
