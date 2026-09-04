@@ -100,9 +100,24 @@ const AUTH_GATE = [
 //
 // secretKey( is included ahead of the migration landing, so this keeps working
 // when SUPABASE_SERVICE_ROLE_KEY is gone from the source entirely.
+// 2026-09-04: lazyAdminDb and friends added, after this guard reported PASS on a
+// repository where 32 routes bypassed row level security.
+//
+// javari-spirits obtains its client from `import { lazyAdminDb } from
+// '@/lib/supabase/admin'` — a service-role client whose NAME contains neither
+// SERVICE_ROLE nor 'service'. Every one of those routes took a userId from the
+// request, and the guard filed them as HIGH rather than CRITICAL and passed the
+// build.
+//
+// The lesson is the one already written above this list and it recurred anyway:
+// a helper hides the credential. Matching the credential's NAME will always trail
+// the helpers people write, so the helper names have to be enumerated too, and
+// this comment is here so the next name gets added rather than the next PASS
+// being trusted.
 const SERVICE_ROLE = [
   /SERVICE_ROLE/, /service_role/, /serviceDb\s*\(/, /SUPABASE_SERVICE_ROLE_KEY/,
   /createServiceClient\s*\(/, /secretKey\s*\(/,
+  /lazyAdminDb\s*\(/, /getSupabaseAdmin\s*\(/, /adminDb\s*\(/, /supabaseAdmin\b/,
 ];
 const REVIEWED = /@auth-(reviewed|public)\b/;
 
