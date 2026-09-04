@@ -62,6 +62,16 @@ const AUTH_GATE = [
   // that does not know every legitimate gate accuses working code, and the third
   // false accusation is the one that gets the guard switched off.
   /requireOwner\s*\(/,
+  // 2026-09-04: requirePermission added, VERIFIED not assumed. javari-dashboard
+  // gates with it and six routes were reported CRITICAL. lib/rbac.ts calls
+  // supabase.auth.getUser(), THROWS 'Authentication required' when there is no
+  // user, and returns the verified user.id - so a route destructuring userId from
+  // it is reading an authenticated identity, not a caller-supplied one.
+  //
+  // Read before adding, because an entry here that is wrong makes the gate lie in
+  // the safe-looking direction: it silences a real finding rather than raising a
+  // false one, and nobody notices a warning that stopped appearing.
+  /requirePermission\s*\(/,
   /callerId\s*\(/,
   /getUserFromRequest\s*\(/,
   // 2026-08-27: resolveExpensesOrg added, verified not assumed. It is the wrapper
