@@ -28,6 +28,35 @@ function walk(dir, out = []) {
 }
 
 const ID_FROM_REQ = [
+  // 2026-09-04: `b.userId` added, after this guard passed javari-spirits while
+  // twenty handlers read an id from the request.
+  //
+  // The shape it could not see:
+  //     let b: { userId: string; ... }
+  //     try { b = await request.json() } catch { ... }
+  //     ...  b.userId  ...
+  //
+  // The existing patterns look for a destructure or a searchParams.get. Assigning
+  // the parsed body to a typed local and reading a property off it later matched
+  // nothing, and /api/wishlist POST created rows for any user id a caller sent -
+  // verified live, then deleted.
+  //
+  // Any identifier followed by .userId or .user_id is now a signal. That is
+  // broader than the previous patterns and will occasionally name a variable that
+  // already holds a verified id; the gate list is what resolves those, and a
+  // false positive somebody must read beats a silent pass.
+  // 2026-09-04: a name-exclusion list was tried first and abandoned.
+  //
+  // Flagging every `x.userId` matched `_c.userId` - the gate's own result - and
+  // reported every route already fixed. Excluding known-good names then matched
+  // `photo.user_id`, a database row being compared against a verified user, and
+  // accused correct code. Enumerating safe names is unwinnable: the next variable
+  // is always one nobody listed.
+  //
+  // What matters is not the NAME but the PROVENANCE. An id is dangerous when it
+  // came from the request, and harmless when it came from a row or a token. So
+  // requestDerived() below finds the variables actually assigned from
+  // request.json() or searchParams, and only reads off THOSE are flagged.
   /\.get\(\s*["'`](userId|user_id)["'`]\s*\)/,
   /\b(body|payload|reqBody|input|data|json)\s*\.\s*(userId|user_id)\b/,
   /const\s*\{[^}]*\b(userId|user_id)\b[^}]*\}\s*=\s*(await\s*)?(req|request|body|payload)/,
@@ -129,6 +158,37 @@ const SERVICE_ROLE = [
   /createServiceClient\s*\(/, /secretKey\s*\(/,
   /lazyAdminDb\s*\(/, /getSupabaseAdmin\s*\(/, /adminDb\s*\(/, /supabaseAdmin\b/,
 ];
+
+/**
+ * Variables in this handler that hold something the CALLER sent.
+ *
+ * Tracks assignments from request.json(), req.json(), searchParams and the
+ * request body, including the `let b: {...}` then `b = await request.json()`
+ * shape that a single-expression matcher misses entirely — which is how twenty
+ * handlers passed this guard while reading ids straight from the body.
+ */
+function requestDerived(body) {
+  const names = new Set();
+  const re = /(?:let|const|var)\s+(\w+)[^=;]*=\s*(?:await\s+)?(?:request|req)\.(?:json|formData)\(\)|(\w+)\s*=\s*await\s+(?:request|req)\.json\(\)/g;
+  let m;
+  while ((m = re.exec(body)) !== null) {
+    const name = m[1] ?? m[2];
+    if (name) names.add(name);
+  }
+  return names;
+}
+
+/** True when this handler reads a user id off something the caller supplied. */
+function readsCallerId(body) {
+  if (/\.get\(\s*["'`](userId|user_id)["'`]\s*\)/.test(stripComments(body))) return true;
+  const code = stripComments(body);
+  for (const name of requestDerived(code)) {
+    if (new RegExp(`\\b${name}\\.(userId|user_id)\\b`).test(code)) return true;
+  }
+  // A destructure straight off the parsed body.
+  return /\{[^}]*\b(userId|user_id)\b[^}]*\}\s*=\s*(await\s+)?(req|request)\b/.test(code);
+}
+
 const REVIEWED = /@auth-(reviewed|public)\b/;
 
 // 2026-08-28: A GATE WITH A PUBLISHED DEFAULT IS NOT A GATE.
@@ -200,7 +260,7 @@ for (const f of files) {
   for (const mth of d.filter((x) => x.kind === "fn" && /^(GET|POST|PUT|PATCH|DELETE)$/.test(x.name))) {
     const before = src.slice(Math.max(0, mth.start - 400), mth.start);
     if (REVIEWED.test(mth.body) || REVIEWED.test(before)) { reviewedCount++; continue; }
-    const idFromReq = any(ID_FROM_REQ, mth.body);
+    const idFromReq = any(ID_FROM_REQ, mth.body) || readsCallerId(mth.body);
     const gated = any(AUTH_GATE, mth.body) || callsGatedHelper(mth.body);
     const label = `${rel} [${mth.name}]`;
     if (any(SECRET_DEFAULT, mth.body)) findings.CRITICAL.push(`${label}  (gate falls back to a hardcoded secret)`);
