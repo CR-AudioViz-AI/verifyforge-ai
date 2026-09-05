@@ -64,7 +64,11 @@ async function probe(url: string, method: 'GET' | 'POST'): Promise<Probe | null>
         'Content-Type': 'application/json',
         'User-Agent': 'JavariVerify/1.0 (+https://craudiovizai.com)',
       },
-      body: method === 'POST' ? '{}' : undefined,
+      // 2026-09-04: `undefined` is not assignable to BodyInit | null under this
+      // repo's stricter lib.dom types, so the property is omitted for GET rather
+      // than set to undefined. Caught by wiring the guard into the build, which
+      // is the point of wiring it in.
+      ...(method === 'POST' ? { body: '{}' } : {}),
       signal: AbortSignal.timeout(12_000),
       redirect: 'follow',
     });
