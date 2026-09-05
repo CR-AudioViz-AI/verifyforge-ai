@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:e2e": "playwright test",
-    "typecheck": "./node_modules/.bin/tsc --noEmit"
+    "typecheck": "./node_modules/.bin/tsc --noEmit",
+    "prebuild": "node scripts/audit-route-auth.mjs"
   },
   "dependencies": {
     "@craudioviz/platform-sdk": "git+https://github.com/CR-AudioViz-AI/platform-sdk.git",
