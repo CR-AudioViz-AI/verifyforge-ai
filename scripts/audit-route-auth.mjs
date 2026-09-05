@@ -91,6 +91,23 @@ const AUTH_GATE = [
   // that does not know every legitimate gate accuses working code, and the third
   // false accusation is the one that gets the guard switched off.
   /requireOwner\s*\(/,
+  /callerId\s*\(/,
+  /requireCaller\s*\(/,
+  // 2026-09-04: adminAuthorised. It requires the full ADMIN_API_SECRET in an
+  // Authorization header, compared in constant time, and refuses when that secret
+  // is unset. It replaced a gate that accepted the last ten characters of the
+  // service-role key from a query string on routes that set passwords.
+  /adminAuthorised\s*\(/,
+  //
+  // 2026-09-04, ON LOSING THESE ONCE ALREADY: this list was rebuilt by copying
+  // the guard from whichever repository had the newest fix, and each copy carried
+  // only the gate names that repository happened to need. callerId and
+  // adminAuthorised were both taught to the guard earlier the same day and both
+  // vanished when v5 was cut from the javari-spirits copy - which reported two
+  // correctly-gated admin routes as CRITICAL.
+  //
+  // A gate list assembled by copying diverges by construction. The names belong
+  // here, together, and the fleet copy is taken from THIS file.
   // 2026-09-04: requirePermission added, VERIFIED not assumed. javari-dashboard
   // gates with it and six routes were reported CRITICAL. lib/rbac.ts calls
   // supabase.auth.getUser(), THROWS 'Authentication required' when there is no
