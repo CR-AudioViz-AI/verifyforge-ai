@@ -42,6 +42,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body style={{ margin: 0, padding: 0, fontFamily: 'system-ui, sans-serif' }}>
+        {/* 2026-09-10: WCAG 2.4.1. Without this a keyboard user traverses the
+            entire navigation on every page before reaching anything. Visually
+            hidden until focused, which is the point - it is for people who are
+            not using a mouse, and it appears the moment they tab. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-black focus:outline focus:outline-2"
+        >
+          Skip to main content
+        </a>
+
         <style dangerouslySetInnerHTML={{ __html: BRAND_TOKENS }} />
         <div style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(8px)', padding: '6px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 200 }}>
           <a href="https://craudiovizai.com" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#fff', fontSize: 14, fontWeight: 600 }}>
