@@ -16,7 +16,7 @@
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.5",
     "cheerio": "^1.0.0-rc.12",
-    "docx": "^8.5.0",
+    "docx": "^9.7.1",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.577.0",
     "next": "^16.3.4",
